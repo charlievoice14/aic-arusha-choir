@@ -3,11 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AIC Choir">
+<meta name="theme-color" content="#1F2A4A">
 <title>AIC Arusha Choir</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+#sync-dot{position:fixed;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:#9aa3b5;z-index:9999;box-shadow:0 0 0 2px rgba(255,255,255,.7);transition:background .3s}
+#sync-dot[data-state="live"]{background:#2fbf71}
+#sync-dot[data-state="saving"]{background:#f5b942}
+#sync-dot[data-state="offline"]{background:#e5484d}
+
   :root{
     --primary:#FF7D92;
     --primary-dark:#C14F64;
@@ -225,6 +234,7 @@
 </style>
 </head>
 <body>
+<div id="sync-dot" title="Connecting…"></div>
 <div class="phone">
   <header class="appbar">
     <div class="appbar-row">
@@ -287,28 +297,12 @@
   </nav>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyAHzxcFb9O2NGiC_NVSZsiujDL51k6F4Mc",
-  authDomain: "aic-arusha-choir.firebaseapp.com",
-  projectId: "aic-arusha-choir",
-  storageBucket: "aic-arusha-choir.firebasestorage.app",
-  messagingSenderId: "79314643242",
-  appId: "1:79314643242:web:6985febc11feadcfe7d653"
-};
-let fbApp = null, fbDb = null, fbAuth = null;
-try{
-  fbApp = initializeApp(firebaseConfig);
-  fbDb = getFirestore(fbApp);
-  fbAuth = getAuth(fbApp);
-}catch(e){ console.error('Firebase init failed', e); }
-
+<script>
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const POSITIONS = ["Choir Member","Choir Leader","Assistant Choir Leader","Section Leader","Chairperson","Secretary","Treasurer"];
 const EVENT_TYPES = ["Service","Rehearsal","Concert","Crusade","Special Program","Other"];
@@ -353,7 +347,7 @@ let scannerActive = false;
 let scanAnimFrame = null;
 let scanMessage = "";
 let qrInstance = null;
-let BACKEND = null; // 'db' | 'storage' | 'none'
+let BACKEND = null; // 'firebase' | 'none'
 let dbCap = null;
 let myUserId = null;
 let unsubscribeShared = null;
@@ -370,109 +364,131 @@ function mergeSharedDefaults(d){
   return { schedule:[], members:[], sessions:[], announcements:[], songs:[], events:[], adminPasscode:null, ...d };
 }
 
+/* ================= FIREBASE BACKEND (live sync across devices) ================= */
+/* Paste your Firebase web config here (Firebase console → Project settings → Your apps → Web app). */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAHzxcFb9O2NGiC_NVSZsiujDL51k6F4Mc",
+  authDomain: "aic-arusha-choir.firebaseapp.com",
+  projectId: "aic-arusha-choir",
+  storageBucket: "aic-arusha-choir.firebasestorage.app",
+  messagingSenderId: "79314643242",
+  appId: "1:79314643242:web:6985febc11feadcfe7d653"
+};
+const SHARED_DOC_PATH = 'choir/data';
+let fsDb = null, sharedRef = null;
+let baseData = null;          // last version seen from the server (used to merge edits)
+let pendingRemoteRender = false;
+let saveChain = Promise.resolve();
+
+function clone(o){ return JSON.parse(JSON.stringify(o === undefined ? null : o)); }
+function same(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+function isObj(v){ return v && typeof v === 'object' && !Array.isArray(v); }
+function idArray(a){ return Array.isArray(a) && a.every(x=>isObj(x) && x.id != null); }
+
+/* Three-way merge: apply what THIS device changed (base → local) on top of the latest server copy,
+   so two phones checking in or editing at the same moment don't overwrite each other. */
+function merge3(base, local, remote){
+  if(same(local, base)) return clone(remote);
+  if(same(remote, base) || remote === undefined) return clone(local);
+  if(isObj(local) && isObj(remote)){
+    const b = isObj(base) ? base : {}, out = {};
+    const keys = new Set([...Object.keys(b), ...Object.keys(local), ...Object.keys(remote)]);
+    keys.forEach(k=>{
+      const inL = k in local, inR = k in remote, inB = k in b;
+      if(!inL && inB){ if(!inR || same(remote[k], b[k])) return; out[k] = clone(remote[k]); return; } // deleted here
+      if(!inR && inB){ if(same(local[k], b[k])) return; out[k] = clone(local[k]); return; }            // deleted elsewhere
+      if(!inL){ out[k] = clone(remote[k]); return; }
+      if(!inR){ out[k] = clone(local[k]); return; }
+      out[k] = merge3(inB ? b[k] : undefined, local[k], remote[k]);
+    });
+    return out;
+  }
+  if(idArray(local) && idArray(remote)){
+    const b = idArray(base) ? base : [];
+    const bm = new Map(b.map(x=>[x.id,x])), lm = new Map(local.map(x=>[x.id,x])), rm = new Map(remote.map(x=>[x.id,x]));
+    const localReordered = !same(local.map(x=>x.id).filter(id=>bm.has(id)), b.map(x=>x.id).filter(id=>lm.has(id)));
+    const order = localReordered
+      ? [...local.map(x=>x.id), ...remote.map(x=>x.id).filter(id=>!lm.has(id))]
+      : [...remote.map(x=>x.id), ...local.map(x=>x.id).filter(id=>!rm.has(id))];
+    const out = [];
+    order.forEach(id=>{
+      const inL = lm.has(id), inR = rm.has(id), inB = bm.has(id);
+      let v;
+      if(!inL && inB){ if(!inR || same(rm.get(id), bm.get(id))) return; v = rm.get(id); }
+      else if(!inR && inB){ if(same(lm.get(id), bm.get(id))) return; v = lm.get(id); }
+      else if(!inL) v = rm.get(id);
+      else if(!inR) v = lm.get(id);
+      else v = merge3(inB ? bm.get(id) : undefined, lm.get(id), rm.get(id));
+      out.push(clone(v));
+    });
+    return out;
+  }
+  return clone(local); // both changed the same simple value: this device wins
+}
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ if(v==null) localStorage.removeItem(k); else localStorage.setItem(k,v); }catch(e){} }
+
+function setSyncStatus(state){
+  const el = document.getElementById('sync-dot'); if(!el) return;
+  el.dataset.state = state;
+  el.title = state === 'live' ? 'Live — synced' : state === 'saving' ? 'Saving…' : 'Offline — changes will sync when back online';
+}
+
 async function detectBackend(){
-  if(fbDb && fbAuth){
-    try{
-      myUserId = await new Promise((resolve)=>{
-        const unsub = onAuthStateChanged(fbAuth, (user)=>{
-          if(user){ unsub(); resolve(user.uid); }
-        });
-        signInAnonymously(fbAuth).catch(()=>{ unsub(); resolve(null); });
-      });
-      if(myUserId){ BACKEND = 'firebase'; return; }
-    }catch(e){ console.error('Firebase auth failed', e); }
-  }
-  if(window.claude && typeof window.claude.use === 'function'){
-    try{ dbCap = await window.claude.use('db'); }catch(e){ dbCap = null; }
-    if(dbCap){
-      BACKEND = 'db';
-      try{
-        const userCap = await window.claude.use('user');
-        myUserId = userCap ? await userCap.id() : null;
-      }catch(e){ myUserId = null; }
-      return;
-    }
-  }
-  if(window.storage){ BACKEND = 'storage'; return; }
-  BACKEND = 'none';
+  try{
+    if(!window.firebase || FIREBASE_CONFIG.apiKey.startsWith('PASTE')){ BACKEND = 'none'; return; }
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    fsDb = firebase.firestore();
+    try{ await fsDb.enablePersistence({ synchronizeTabs:true }); }catch(e){ /* offline cache not available — fine */ }
+    try{ await firebase.auth().signInAnonymously(); }catch(e){ console.warn('Anonymous sign-in failed (enable it in Firebase Auth):', e); }
+    sharedRef = fsDb.doc(SHARED_DOC_PATH);
+    BACKEND = 'firebase';
+  }catch(e){ console.error('Firebase init failed', e); BACKEND = 'none'; }
+}
+
+function isEditingField(){
+  const a = document.activeElement;
+  return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable));
+}
+document.addEventListener('focusout', ()=>{
+  setTimeout(()=>{ if(pendingRemoteRender && !isEditingField()){ pendingRemoteRender = false; render(true); } }, 50);
+});
+
+function applyRemote(remote){
+  remote = mergeSharedDefaults(remote || {});
+  // keep any edits this device hasn't finished saving yet
+  const next = baseData ? merge3(baseData, data, remote) : remote;
+  baseData = clone(remote);
+  if(same(next, data)) return;
+  data = mergeSharedDefaults(next);
+  resolveLoggedInMember();
+  resolveBoundMember();
+  if(isEditingField()) pendingRemoteRender = true; else render(true);
 }
 
 function subscribeSharedData(){
-  if(unsubscribeShared) return;
-  if(BACKEND === 'firebase' && fbDb){
-    unsubscribeShared = onSnapshot(doc(fbDb, 'choir', 'data'), (snap)=>{
-      if(snap.exists()){
-        data = mergeSharedDefaults(snap.data());
-        resolveLoggedInMember();
-        resolveBoundMember();
-        render(true);
-      }
-    }, (err)=>{ console.error('Shared data subscription error', err); });
-    return;
-  }
-  if(BACKEND !== 'db' || !dbCap) return;
-  unsubscribeShared = dbCap.doc('choir/data').onSnapshot((snap)=>{
-    if(snap.exists){
-      data = mergeSharedDefaults(snap.data());
-      resolveLoggedInMember();
-      resolveBoundMember();
-      render(true);
-    }
-  }, (err)=>{ console.error('Shared data subscription error', err); });
+  if(BACKEND !== 'firebase' || unsubscribeShared) return;
+  unsubscribeShared = sharedRef.onSnapshot({ includeMetadataChanges:true }, (snap)=>{
+    setSyncStatus(snap.metadata.fromCache ? 'offline' : 'live');
+    if(snap.metadata.hasPendingWrites) return;
+    if(snap.exists) applyRemote(snap.data());
+  }, (err)=>{ console.error('Live sync error', err); setSyncStatus('offline'); showToast('Live sync stopped — check Firestore rules.'); });
 }
 
 async function loadData(){
   await detectBackend();
+  notifOn = lsGet(NOTIF_KEY) !== 'off';
+  currentUserId = lsGet(USER_KEY);
+  boundMemberId = lsGet(BOUND_KEY);
 
   if(BACKEND === 'firebase'){
     try{
-      const snap = await getDoc(doc(fbDb, 'choir', 'data'));
-      if(snap.exists()){ data = mergeSharedDefaults(snap.data()); }
-    }catch(e){ console.error('Failed to load shared data', e); }
-    try{
-      const psnap = await getDoc(doc(fbDb, 'users', myUserId));
-      if(psnap.exists()){
-        const p = psnap.data();
-        currentUserId = p.currentMemberId || null;
-        boundMemberId = p.boundMemberId || null;
-        notifOn = p.notifOn !== false;
-      }
-    }catch(e){ console.error('Failed to load preferences', e); }
-    subscribeSharedData();
-  } else if(BACKEND === 'db'){
-    try{
-      const snap = await dbCap.doc('choir/data').get();
+      const snap = await sharedRef.get();
       if(snap.exists){ data = mergeSharedDefaults(snap.data()); }
+      baseData = clone(data);
     }catch(e){ console.error('Failed to load shared data', e); }
-    if(myUserId){
-      try{
-        const psnap = await dbCap.doc('data/users/' + myUserId + '/prefs').get();
-        if(psnap.exists){
-          const p = psnap.data();
-          currentUserId = p.currentMemberId || null;
-          boundMemberId = p.boundMemberId || null;
-          notifOn = p.notifOn !== false;
-        }
-      }catch(e){ console.error('Failed to load preferences', e); }
-    }
     subscribeSharedData();
-  } else if(BACKEND === 'storage'){
-    try{
-      const res = await window.storage.get(STORE_KEY, true);
-      if(res && res.value){ data = mergeSharedDefaults(JSON.parse(res.value)); }
-    }catch(e){ console.log("No existing data yet, starting fresh."); }
-    try{
-      const n = await window.storage.get(NOTIF_KEY, false);
-      if(n && n.value){ notifOn = n.value === 'on'; }
-    }catch(e){ notifOn = true; }
-    try{
-      const u = await window.storage.get(USER_KEY, false);
-      if(u && u.value){ currentUserId = u.value; }
-    }catch(e){ currentUserId = null; }
-    try{
-      const b = await window.storage.get(BOUND_KEY, false);
-      if(b && b.value){ boundMemberId = b.value; }
-    }catch(e){ boundMemberId = null; }
   }
 
   resolveLoggedInMember();
@@ -482,58 +498,44 @@ async function loadData(){
 }
 
 async function reloadSharedData(){
-  if(BACKEND === 'firebase' || BACKEND === 'db'){ resolveLoggedInMember(); return; } // already kept live by the subscription
-  if(BACKEND !== 'storage') return;
+  if(BACKEND !== 'firebase') return;
   try{
-    const res = await window.storage.get(STORE_KEY, true);
-    if(res && res.value){
-      data = mergeSharedDefaults(JSON.parse(res.value));
-      resolveLoggedInMember();
-    }
-  }catch(e){ /* ignore */ }
+    const snap = await sharedRef.get({ source:'server' });
+    if(snap.exists) applyRemote(snap.data());
+  }catch(e){ /* offline — the live listener will catch up */ }
 }
 
-async function saveData(){
-  if(BACKEND === 'firebase' && fbDb){
-    try{ await setDoc(doc(fbDb, 'choir', 'data'), data); }
-    catch(e){ console.error('Failed to save data', e); showToast('Could not save — check your connection.'); }
-    return;
-  }
-  if(BACKEND === 'db' && dbCap){
-    try{ await dbCap.doc('choir/data').set(data); }
-    catch(e){ console.error('Failed to save data', e); showToast('Could not save — check your connection.'); }
-    return;
-  }
-  if(BACKEND === 'storage'){
-    try{ await window.storage.set(STORE_KEY, JSON.stringify(data), true); }
-    catch(e){ console.error('Failed to save data', e); }
-  }
+function saveData(){
+  if(BACKEND !== 'firebase') return Promise.resolve();
+  const local = clone(data);
+  const base = clone(baseData || {});
+  setSyncStatus('saving');
+  saveChain = saveChain.then(async ()=>{
+    try{
+      let merged;
+      await fsDb.runTransaction(async (tx)=>{
+        const snap = await tx.get(sharedRef);
+        const remote = snap.exists ? mergeSharedDefaults(snap.data()) : mergeSharedDefaults({});
+        merged = mergeSharedDefaults(merge3(base, local, remote));
+        tx.set(sharedRef, merged);
+      });
+      baseData = clone(merged);
+      if(!same(merged, data) && same(local, data)){ data = merged; resolveLoggedInMember(); if(!isEditingField()) render(true); }
+      setSyncStatus('live');
+    }catch(e){
+      console.error('Failed to save data', e);
+      setSyncStatus('offline');
+      showToast('Could not save — check your internet connection.');
+    }
+  });
+  return saveChain;
 }
 
 async function savePrefs(){
-  if(BACKEND === 'firebase' && fbDb && myUserId){
-    try{
-      await setDoc(doc(fbDb, 'users', myUserId), {
-        currentMemberId: currentUserId, boundMemberId: boundMemberId, notifOn: notifOn
-      });
-    }catch(e){ console.error('Failed to save preferences', e); }
-    return;
-  }
-  if(BACKEND === 'db' && dbCap && myUserId){
-    try{
-      await dbCap.doc('data/users/' + myUserId + '/prefs').set({
-        currentMemberId: currentUserId, boundMemberId: boundMemberId, notifOn: notifOn
-      });
-    }catch(e){ console.error('Failed to save preferences', e); }
-    return;
-  }
-  if(BACKEND === 'storage'){
-    try{
-      await window.storage.set(NOTIF_KEY, notifOn ? 'on' : 'off', false);
-      if(currentUserId) await window.storage.set(USER_KEY, currentUserId, false); else await window.storage.delete(USER_KEY, false);
-      if(boundMemberId) await window.storage.set(BOUND_KEY, boundMemberId, false); else await window.storage.delete(BOUND_KEY, false);
-    }catch(e){ console.error('Failed to save preferences', e); }
-  }
+  // per-device settings (who is logged in on this phone, device lock, notifications)
+  lsSet(NOTIF_KEY, notifOn ? 'on' : 'off');
+  lsSet(USER_KEY, currentUserId || null);
+  lsSet(BOUND_KEY, boundMemberId || null);
 }
 
 async function setCurrentUser(id){
@@ -565,7 +567,7 @@ async function lockDeviceTo(member){
   resolveBoundMember();
 }
 function isAdmin(){ return !!(loggedInMember && loggedInMember.role === 'admin'); }
-function isConnected(){ return BACKEND === 'firebase' || BACKEND === 'db' || BACKEND === 'storage'; }
+function isConnected(){ return BACKEND === 'firebase'; }
 
 function fmtDate(d){ const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }
 function fmtDateShort(d){ const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString('en-US', { day:'numeric', month:'short' }); }
@@ -761,7 +763,7 @@ function renderLogin(){
 
   const notConnectedNotice = !isConnected() ? `
     <div class="card" style="border-color:var(--late);background:var(--late-bg);">
-      <p class="desc" style="margin:0;color:var(--text);"><strong>Not connected.</strong> This copy isn't linked to shared storage, so nothing you do here will be saved or shared with others. Open the published link to use the real app.</p>
+      <p class="desc" style="margin:0;color:var(--text);"><strong>Not connected.</strong> Can't reach the choir database right now. Check your internet connection and reload the app.</p>
     </div>` : '';
 
   const logoBlock = `
