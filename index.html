@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AIC Choir">
@@ -12,6 +12,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+/* keep the app solid on phones: no zoom when typing, no double-tap zoom, no rubber-band bounce */
+html,body{ -webkit-text-size-adjust:100%; text-size-adjust:100%; touch-action:manipulation; overscroll-behavior:none; }
+input,textarea,select{ font-size:16px !important; }
+
 #sync-dot{position:fixed;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:#9aa3b5;z-index:9999;box-shadow:0 0 0 2px rgba(255,255,255,.7);transition:background .3s}
 #sync-dot[data-state="live"]{background:#2fbf71}
 #sync-dot[data-state="saving"]{background:#f5b942}
@@ -2229,6 +2233,10 @@ function attachHandlers(){
 }
 
 loadData();
+</script>
+<script>
+document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
 </script>
 </body>
 </html>
