@@ -130,6 +130,57 @@ input,textarea,select{ font-size:16px !important; }
   .announce .a-date{font-size:10.5px;color:var(--text-faint);margin-top:7px;text-transform:uppercase;letter-spacing:0.3px;}
   .announce .a-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 
+
+  input[type=password]{background:var(--card2);border:1px solid var(--border);color:var(--text);}
+  /* ===== Auth screens (welcome / sign in / sign up) ===== */
+  .auth{position:relative;min-height:calc(100vh - 140px);display:flex;flex-direction:column;padding:8px 6px 24px;}
+  .auth-deco{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+  .auth-deco svg{position:absolute;width:100%;height:100%;}
+  .auth-deco path{fill:none;stroke:var(--border);stroke-width:1.4;stroke-dasharray:5 7;}
+  .welcome-hero{position:relative;height:300px;display:flex;align-items:center;justify-content:center;margin-top:10px;}
+  .hero-ring{width:168px;height:168px;border-radius:50%;background:radial-gradient(circle at 50% 40%,var(--card2),var(--card));border:1px solid var(--border);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 14px rgba(255,125,146,0.06),0 0 0 30px rgba(255,125,146,0.03);}
+  .hero-ring img{width:64%;height:64%;object-fit:contain;}
+  .float-tile{position:absolute;width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;animation:floaty 5s ease-in-out infinite;}
+  .float-tile svg{width:24px;height:24px;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .float-tile.t1{top:18px;left:calc(50% - 30px);background:var(--gold-soft);} .float-tile.t1 svg{stroke:var(--gold);}
+  .float-tile.t2{top:104px;left:calc(50% - 150px);background:var(--blue-soft);animation-delay:-1.6s;} .float-tile.t2 svg{stroke:var(--blue);}
+  .float-tile.t3{top:84px;right:calc(50% - 150px);background:var(--primary-soft);animation-delay:-3.2s;} .float-tile.t3 svg{stroke:var(--primary);}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .welcome-copy{position:relative;text-align:center;margin-top:8px;}
+  .welcome-copy h1{font-family:'Inter',sans-serif;font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px;color:var(--text);}
+  .welcome-copy p{color:var(--text-soft);font-size:14px;line-height:1.55;margin:0 auto;max-width:290px;}
+  .dots{display:flex;gap:6px;justify-content:center;margin:26px 0 0;}
+  .dots span{width:6px;height:6px;border-radius:4px;background:var(--border);} .dots span.on{width:22px;background:var(--primary);}
+  .welcome-actions{position:relative;display:flex;gap:12px;margin-top:auto;padding-top:34px;}
+  .welcome-actions .btn{flex:1;height:50px;border-radius:12px;font-size:15px;justify-content:center;display:flex;align-items:center;}
+  .btn.primary-glow{box-shadow:0 10px 24px -8px rgba(255,125,146,0.55);}
+  .btn.outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary);}
+  .auth-back{width:40px;height:40px;border-radius:50%;background:var(--card2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;margin:6px 0 20px;}
+  .auth-back svg{width:18px;height:18px;stroke:var(--primary);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+  .auth-title{font-family:'Fraunces',serif;font-size:32px;line-height:1.12;font-weight:700;margin:0 0 8px;color:var(--text);}
+  .auth-sub{color:var(--text-soft);font-size:13.5px;margin:0 0 22px;line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:7px;}
+  .field-box{position:relative;}
+  .field-box input,.field-box select{width:100%;height:50px;border-radius:12px;background:var(--card2) !important;border:1px solid transparent !important;padding:0 46px 0 14px !important;color:var(--text);box-sizing:border-box;}
+  .field-box select{padding-right:14px !important;}
+  .field-box input:focus,.field-box select:focus{border-color:var(--primary) !important;outline:none;}
+  .field-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);width:20px;height:20px;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;cursor:pointer;}
+  .field-icon svg{width:20px;height:20px;fill:none;stroke:var(--text-faint);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .field-icon.ok svg{stroke:var(--primary);}
+  .field-row{display:flex;gap:10px;} .field-row .field{flex:1;min-width:0;}
+  .seg{display:flex;background:var(--card2);border-radius:12px;padding:4px;gap:4px;margin-bottom:16px;}
+  .seg button{flex:1;height:40px;border:0;border-radius:9px;background:transparent;color:var(--text-soft);font-weight:700;font-family:'Inter',sans-serif;font-size:13.5px;cursor:pointer;}
+  .seg button.active{background:var(--primary);color:#1A0E18;}
+  .auth-submit{width:100%;height:52px;border-radius:12px;font-size:15px;justify-content:center;display:flex;align-items:center;margin-top:8px;}
+  .auth-foot{text-align:center;font-size:13px;color:var(--text-soft);margin-top:22px;}
+  .auth-foot a{color:var(--primary);font-weight:700;text-decoration:underline;cursor:pointer;}
+  .auth-note{font-size:12px;color:var(--text-faint);margin:-6px 0 16px;line-height:1.5;}
+  .auth-error{background:var(--absent-bg);color:var(--absent);border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:14px;font-weight:600;}
+  .locked-chip{display:flex;align-items:center;gap:12px;background:var(--card2);border-radius:14px;padding:12px 14px;margin-bottom:18px;}
+  .locked-chip .account-avatar{flex-shrink:0;}
+  .song-actions{display:flex;gap:6px;margin-right:6px;}
+  .song-actions .btn{padding:6px 10px;font-size:12px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -342,7 +393,13 @@ let currentUserId = null;
 let loggedInMember = null;
 let boundMemberId = null;
 let boundMember = null;
-let loginView = "pick";
+let loginView = "welcome"; // 'welcome' | 'signin' | 'signup'
+let authError = '';
+let loginAltMode = false;   // on a locked phone: let an administrator sign in with another account
+let editingLibSongId = null;
+let memberView = false;     // administrator temporarily using the app as a member
+const DEVICE_KEY = 'choir_device_id';
+const MEMBER_VIEW_KEY = 'choir_member_view';
 let loginSearch = "";
 let qrPollId = null;
 let scannerOpen = false;
@@ -485,6 +542,7 @@ async function loadData(){
   notifOn = lsGet(NOTIF_KEY) !== 'off';
   currentUserId = lsGet(USER_KEY);
   boundMemberId = lsGet(BOUND_KEY);
+  memberView = lsGet(MEMBER_VIEW_KEY) === '1';
 
   if(BACKEND === 'firebase'){
     try{
@@ -570,7 +628,24 @@ async function lockDeviceTo(member){
   await savePrefs();
   resolveBoundMember();
 }
-function isAdmin(){ return !!(loggedInMember && loggedInMember.role === 'admin'); }
+function isRealAdmin(){ return !!(loggedInMember && loggedInMember.role === 'admin'); }
+function isAdmin(){ return isRealAdmin() && !memberView; }
+function getDeviceId(){
+  let id = lsGet(DEVICE_KEY);
+  if(!id){ id = 'dev_' + uid() + uid(); lsSet(DEVICE_KEY, id); }
+  return id;
+}
+async function hashPin(memberId, pin){
+  const text = 'aic-choir:' + memberId + ':' + pin;
+  try{
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){
+    let h = 5381; for(let i=0;i<text.length;i++){ h = ((h<<5)+h) ^ text.charCodeAt(i); }
+    return 'f' + (h>>>0).toString(16);
+  }
+}
+function normName(n){ return (n||'').trim().replace(/\s+/g,' ').toLowerCase(); }
 function isConnected(){ return BACKEND === 'firebase'; }
 
 function fmtDate(d){ const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }
@@ -644,7 +719,8 @@ function logOut(name){
       searchQuery = '';
       openSongId = null;
       scanMessage = '';
-      loginView = 'pick';
+      loginView = 'welcome';
+      authError = ''; loginAltMode = false;
       loginSearch = '';
       document.getElementById('global-search').value = '';
       render();
@@ -716,7 +792,7 @@ function updateHeaderForUser(){
   document.body.classList.toggle('logged-out', !loggedInMember);
   const sub = document.getElementById('header-sub');
   if(loggedInMember){
-    sub.textContent = `Hi, ${loggedInMember.name.split(' ')[0]}${isAdmin() ? ' · Administrator' : ''}`;
+    sub.textContent = `Hi, ${loggedInMember.name.split(' ')[0]}${isAdmin() ? ' · Administrator' : (isRealAdmin() ? ' · Member view' : '')}`;
   } else {
     sub.textContent = 'Please sign in to continue';
   }
@@ -762,96 +838,233 @@ function render(skipAnim){
 }
 
 /* ---------------- LOGIN / SIGNUP ---------------- */
+const ICONS = {
+  back:'<svg viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
+  eye:'<svg viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  note:'<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  qr:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M21 14v7h-4M14 21v-2"/></svg>'
+};
+function escapeHtml(t){ return String(t||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function authDeco(){
+  return `<div class="auth-deco"><svg viewBox="0 0 400 800" preserveAspectRatio="none">
+    <path d="M-20 120 C 90 60, 160 210, 260 150 S 420 60, 430 120"/>
+    <path d="M-30 470 C 80 420, 140 560, 250 500 S 400 420, 440 470"/>
+  </svg></div>`;
+}
+function errorBox(){ return authError ? `<div class="auth-error">${escapeHtml(authError)}</div>` : ''; }
+function connNotice(){
+  return !isConnected() ? `<div class="auth-error" style="background:var(--late-bg);color:var(--late);">Can't reach the choir database right now. Check your internet connection and reload the app.</div>` : '';
+}
+function pinField(id, label, placeholder){
+  return `<div class="field"><label for="${id}">${label}</label><div class="field-box">
+    <input type="password" id="${id}" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="${placeholder}">
+    <button type="button" class="field-icon" data-eye="${id}" aria-label="Show PIN">${ICONS.eye}</button>
+  </div></div>`;
+}
+
 function renderLogin(){
   if(loginView === 'signup') return renderSignup();
-
-  const notConnectedNotice = !isConnected() ? `
-    <div class="card" style="border-color:var(--late);background:var(--late-bg);">
-      <p class="desc" style="margin:0;color:var(--text);"><strong>Not connected.</strong> Can't reach the choir database right now. Check your internet connection and reload the app.</p>
-    </div>` : '';
-
-  const logoBlock = `
-    <div class="card" style="text-align:center;margin-top:24px;">
-      <div class="brand-mark" style="width:72px;height:72px;margin:0 auto 14px;">
-        <img src="${LOGO_DATA_URI}" alt="AIC Arusha Choir logo" style="width:70%;height:70%;object-fit:contain;">
-      </div>
-      <h2 style="font-size:19px;">Welcome to AIC Arusha Choir</h2>
-      <p class="desc">Sign in with your own name to check in, view the schedule, and browse songs.</p>
-    </div>
-    ${notConnectedNotice}`;
-
-  if(deviceIsLocked()){
-    return `
-      ${logoBlock}
-      <div class="card" style="text-align:center;">
-        <h2>Welcome back, ${boundMember.name.split(' ')[0]}</h2>
-        <p class="desc">This device is registered to ${boundMember.name}. Tap below to continue.</p>
-        <button class="btn" data-login-as="${boundMember.id}">Continue as ${boundMember.name.split(' ')[0]}</button>
-        <p class="desc" style="margin-top:14px;font-size:11.5px;">Not you? Each device can only sign in to the member it was first registered to. If this device shouldn't be locked, ask an administrator for help.</p>
-      </div>
-    `;
-  }
-
-  let list = data.members.slice().sort((a,b)=>a.name.localeCompare(b.name));
-  if(loginSearch) list = list.filter(m=>m.name.toLowerCase().includes(loginSearch));
-  const rows = list.map(m=>`
-    <div class="list-item">
-      <div>
-        <div class="li-main">${m.name}${m.role==='admin' ? '<span class="admin-chip">Admin</span>' : ''}${m.isLeader ? '<span class="leader-chip">Leader</span>' : ''}</div>
-        <div class="li-sub">${m.position || 'Choir Member'} · ${m.voicePart || 'Voice part not set'}</div>
-      </div>
-      <button class="btn ghost small" data-login-as="${m.id}">This is me</button>
-    </div>
-  `).join('');
-
+  if(loginView === 'signin') return renderSignin();
+  const locked = deviceIsLocked();
+  const first = locked ? escapeHtml(boundMember.name.split(' ')[0]) : '';
   return `
-    ${logoBlock}
-    <div class="card">
-      <h2>Find your name</h2>
-      <p class="desc">Select yourself from the member list to log in. Signing in as a regular member will register this device to that account.</p>
-      <div class="row"><input type="text" id="login-search" placeholder="Search your name..." value="${loginSearch}" style="flex:1;"></div>
-      ${rows || `<div class="empty">No one has joined yet.<i>Be the first to join below.</i></div>`}
-    </div>
-    <div class="card" style="text-align:center;">
-      <h2>New here?</h2>
-      <p class="desc">Join as a choir member, or as an administrator if you help run the choir.</p>
-      <button class="btn" id="go-signup">Join the choir</button>
-    </div>
-  `;
+    <div class="auth">
+      ${authDeco()}
+      <div class="welcome-hero">
+        <div class="float-tile t1">${ICONS.note}</div>
+        <div class="float-tile t2">${ICONS.cal}</div>
+        <div class="float-tile t3">${ICONS.qr}</div>
+        <div class="hero-ring"><img src="${LOGO_DATA_URI}" alt="AIC Arusha Choir logo"></div>
+      </div>
+      <div class="welcome-copy">
+        <h1>${locked ? `Welcome back, ${first}` : 'AIC Arusha Choir'}</h1>
+        <p>${locked ? 'This phone is registered to your account. Sign in with your PIN to continue.' : 'Check in to rehearsals, follow the schedule and learn our songs — all in one place.'}</p>
+        <div class="dots"><span></span><span></span><span class="on"></span></div>
+      </div>
+      ${connNotice()}
+      <div class="welcome-actions">
+        ${locked
+          ? `<button class="btn primary-glow" data-auth-go="signin" style="flex:1;">Sign in</button>`
+          : `<button class="btn primary-glow" data-auth-go="signup">Sign up</button>
+             <button class="btn outline" data-auth-go="signin">Sign in</button>`}
+      </div>
+    </div>`;
+}
+
+function renderSignin(){
+  const locked = deviceIsLocked() && !loginAltMode;
+  return `
+    <div class="auth">
+      <button class="auth-back" data-auth-go="welcome" aria-label="Back">${ICONS.back}</button>
+      <h1 class="auth-title">Sign In</h1>
+      <p class="auth-sub">${locked ? 'Enter your PIN to open the app.' : 'Enter your full name and PIN.'}</p>
+      ${errorBox()}${connNotice()}
+      ${locked ? `
+        <div class="locked-chip">
+          <div class="account-avatar">${escapeHtml(boundMember.name.trim().charAt(0).toUpperCase())}</div>
+          <div><div class="li-main">${escapeHtml(boundMember.name)}</div><div class="li-sub">Registered on this phone</div></div>
+        </div>` : `
+        <div class="field"><label for="si-name">Full name</label><div class="field-box">
+          <input type="text" id="si-name" autocomplete="name" placeholder="e.g. Neema Mollel">
+          <span class="field-icon ok" id="si-name-ok" style="display:none;">${ICONS.check}</span>
+        </div></div>`}
+      ${pinField('si-pin','PIN','4–6 digit PIN')}
+      <p class="auth-note">First time signing in? The PIN you enter now becomes your PIN.</p>
+      <button class="btn primary-glow auth-submit" id="submit-signin">Sign in</button>
+      <div class="auth-foot">
+        ${locked
+          ? `Administrator? <a data-alt-login>Use a different account</a>`
+          : (deviceIsLocked() ? `<a data-alt-cancel>Back to ${escapeHtml(boundMember.name.split(' ')[0])}'s sign in</a>` : `Don't have an account? <a data-auth-go="signup">Sign up</a>`)}
+      </div>
+    </div>`;
 }
 
 function renderSignup(){
   const noAdminYet = !data.members.some(m=>m.role==='admin');
   return `
-    <div class="card" style="margin-top:24px;">
-      <h2>Create your profile</h2>
-      <p class="desc">This adds you to the official member list right away.</p>
-      <p class="desc" style="margin:-4px 0 4px;font-weight:700;color:var(--text);">I am joining as:</p>
-      <div class="row role-toggle-row">
-        <button type="button" class="btn ghost role-toggle active" id="role-btn-member">Choir Member</button>
-        <button type="button" class="btn ghost role-toggle" id="role-btn-admin">Administrator</button>
+    <div class="auth">
+      <button class="auth-back" data-auth-go="welcome" aria-label="Back">${ICONS.back}</button>
+      <h1 class="auth-title">Create<br>Account</h1>
+      <p class="auth-sub">Join the choir's official member list.</p>
+      ${errorBox()}${connNotice()}
+      <div class="seg">
+        <button type="button" class="active" id="role-btn-member">Choir Member</button>
+        <button type="button" id="role-btn-admin">Administrator</button>
       </div>
       <input type="hidden" id="su-role-selected" value="member">
-      <div class="row" id="passcode-row" style="display:none;">
-        <input type="text" id="su-passcode" placeholder="${noAdminYet ? 'Create an admin passcode (min 4 characters)' : 'Enter admin passcode'}" style="flex:1;">
+      <div id="passcode-row" style="display:none;">
+        <div class="field"><label for="su-passcode">${noAdminYet ? 'Create admin passcode' : 'Admin passcode'}</label><div class="field-box">
+          <input type="password" id="su-passcode" autocomplete="off" placeholder="${noAdminYet ? 'At least 4 characters' : 'Ask an administrator'}">
+          <button type="button" class="field-icon" data-eye="su-passcode" aria-label="Show passcode">${ICONS.eye}</button>
+        </div></div>
+        <p class="auth-note" id="passcode-hint">${noAdminYet ? "You'll be the first administrator — others will need this passcode to join as admin." : 'Only administrators have this passcode.'}</p>
       </div>
-      <p class="desc" id="passcode-hint" style="display:none;margin-top:-6px;">${noAdminYet ? "You'll be the first administrator — this passcode will be required for anyone else joining as admin." : 'Ask an existing administrator for the passcode.'}</p>
+      <div class="field"><label for="su-name">Full name</label><div class="field-box">
+        <input type="text" id="su-name" autocomplete="name" placeholder="e.g. Neema Mollel">
+        <span class="field-icon ok" id="su-name-ok" style="display:none;">${ICONS.check}</span>
+      </div></div>
+      <div class="field-row">
+        <div class="field"><label for="su-gender">Gender</label><div class="field-box">
+          <select id="su-gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div></div>
+        <div class="field"><label for="su-voice">Voice part</label><div class="field-box">
+          <select id="su-voice"><option value="">Select</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select></div></div>
+      </div>
+      <div class="field"><label for="su-position">Position</label><div class="field-box">
+        <select id="su-position">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div></div>
+      ${pinField('su-pin','Create a PIN','4–6 digits — you\'ll use it to sign in')}
+      <button class="btn primary-glow auth-submit" id="submit-signup">Create account</button>
+      <div class="auth-foot">Already have an account? <a data-auth-go="signin">Sign in</a></div>
+    </div>`;
+}
 
-      <div class="row" style="margin-top:6px;"><input type="text" id="su-name" placeholder="Full name" style="flex:1;"></div>
-      <div class="row">
-        <select id="su-gender" style="flex:1;"><option value="">Gender</option><option>Male</option><option>Female</option></select>
-        <select id="su-voice" style="flex:1;"><option value="">Voice part (Rank)</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select>
-      </div>
-      <div class="row">
-        <select id="su-position" style="flex:1;">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
-      </div>
-      <p class="desc" style="margin-top:-2px;">Choosing any position other than "Choir Member" tags you as a Leader (separate from Administrator access).</p>
-      <div class="row">
-        <button class="btn" id="submit-signup">Create profile & log in</button>
-        <button class="btn ghost" id="back-to-login">Back</button>
-      </div>
-    </div>
-  `;
+async function completeLogin(member){
+  // one account per phone, one phone per account (administrators are exempt)
+  if(member.role !== 'admin'){
+    const myDevice = getDeviceId();
+    if(deviceIsLocked() && boundMember.id !== member.id){
+      authError = `This phone is registered to ${boundMember.name}. Each phone can only be used by one member.`; render(true); return false;
+    }
+    if(member.deviceId && member.deviceId !== myDevice){
+      authError = 'This account is already registered on another phone. Ask an administrator to reset your login.'; render(true); return false;
+    }
+    member.deviceId = myDevice;
+  }
+  member.lastLoginAt = new Date().toISOString();
+  saveData();
+  await setCurrentUser(member.id);
+  await lockDeviceTo(member);
+  authError = ''; loginAltMode = false; loginView = 'welcome'; currentTab = 'home';
+  render();
+  return true;
+}
+
+function attachAuthHandlers(){
+  document.querySelectorAll('[data-auth-go]').forEach(el=>{
+    el.onclick = ()=>{ loginView = el.dataset.authGo; authError = ''; if(loginView==='welcome') loginAltMode = false; render(); };
+  });
+  document.querySelectorAll('[data-alt-login]').forEach(el=>{ el.onclick = ()=>{ loginAltMode = true; authError=''; render(true); }; });
+  document.querySelectorAll('[data-alt-cancel]').forEach(el=>{ el.onclick = ()=>{ loginAltMode = false; authError=''; render(true); }; });
+  document.querySelectorAll('[data-eye]').forEach(btn=>{
+    btn.onclick = ()=>{ const inp = document.getElementById(btn.dataset.eye); if(inp) inp.type = inp.type === 'password' ? 'text' : 'password'; };
+  });
+  document.querySelectorAll('input[inputmode=numeric]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ inp.value = inp.value.replace(/\D/g,'').slice(0,6); });
+  });
+  [['si-name','si-name-ok'],['su-name','su-name-ok']].forEach(([i,o])=>{
+    const inp = document.getElementById(i), ok = document.getElementById(o);
+    if(inp && ok) inp.addEventListener('input', ()=>{ ok.style.display = inp.value.trim().split(/\s+/).length >= 2 ? 'flex' : 'none'; });
+  });
+
+  const roleBtnMember = document.getElementById('role-btn-member');
+  const roleBtnAdmin = document.getElementById('role-btn-admin');
+  if(roleBtnMember && roleBtnAdmin){
+    const setRole = (r)=>{
+      roleBtnMember.classList.toggle('active', r==='member');
+      roleBtnAdmin.classList.toggle('active', r==='admin');
+      document.getElementById('passcode-row').style.display = r==='admin' ? 'block' : 'none';
+      document.getElementById('su-role-selected').value = r;
+    };
+    roleBtnMember.onclick = ()=> setRole('member');
+    roleBtnAdmin.onclick = ()=> setRole('admin');
+  }
+
+  const submitSignin = document.getElementById('submit-signin');
+  if(submitSignin) submitSignin.onclick = async ()=>{
+    const locked = deviceIsLocked() && !loginAltMode;
+    const pin = (document.getElementById('si-pin').value || '').trim();
+    const name = locked ? boundMember.name : (document.getElementById('si-name').value || '');
+    if(!locked && !normName(name)){ authError = 'Please enter your full name.'; render(true); return; }
+    if(!/^\d{4,6}$/.test(pin)){ authError = 'Your PIN must be 4 to 6 digits.'; render(true); return; }
+    if(!isConnected()){ authError = "Can't reach the choir database. Check your internet connection."; render(true); return; }
+    await reloadSharedData();
+    const candidates = locked ? [boundMember] : data.members.filter(m=>normName(m.name) === normName(name));
+    if(!candidates.length){ authError = "We couldn't find that name. Check the spelling, or tap Sign up to join."; render(true); return; }
+    let match = null;
+    for(const m of candidates){ if(m.pinHash && m.pinHash === await hashPin(m.id, pin)){ match = m; break; } }
+    if(!match){
+      const fresh = candidates.find(m=>!m.pinHash);
+      if(fresh){ fresh.pinHash = await hashPin(fresh.id, pin); match = fresh; }
+    }
+    if(!match){ authError = 'Incorrect PIN. Please try again, or ask an administrator to reset it.'; render(true); return; }
+    await completeLogin(match);
+  };
+
+  const submitSignup = document.getElementById('submit-signup');
+  if(submitSignup) submitSignup.onclick = async ()=>{
+    const name = document.getElementById('su-name').value.trim().replace(/\s+/g,' ');
+    const role = document.getElementById('su-role-selected').value;
+    const pin = (document.getElementById('su-pin').value || '').trim();
+    const fail = (msg)=>{ authError = msg; render(true); window.scrollTo(0,0); };
+    if(!name){ return fail('Please enter your full name.'); }
+    if(!/^\d{4,6}$/.test(pin)){ return fail('Please create a PIN of 4 to 6 digits.'); }
+    if(!isConnected()){ return fail("Can't reach the choir database. Check your internet connection."); }
+    await reloadSharedData();
+    if(data.members.some(m=>normName(m.name) === normName(name))){ return fail('Someone with this name is already registered. If that is you, go to Sign in.'); }
+    if(role !== 'admin' && deviceIsLocked()){ return fail(`This phone is already registered to ${boundMember.name}. Each phone can only be used by one member.`); }
+    if(role === 'admin'){
+      const noAdminYet = !data.members.some(m=>m.role==='admin');
+      const pass = document.getElementById('su-passcode').value.trim();
+      if(noAdminYet){
+        if(pass.length < 4){ return fail('Please create an admin passcode with at least 4 characters.'); }
+        data.adminPasscode = pass;
+      } else if(!data.adminPasscode || pass !== data.adminPasscode){
+        return fail('Incorrect admin passcode. Try again, or join as a Choir Member.');
+      }
+    }
+    const position = document.getElementById('su-position').value;
+    const newMember = {
+      id: uid(), name,
+      gender: document.getElementById('su-gender').value,
+      voicePart: document.getElementById('su-voice').value,
+      position, role, isLeader: position !== 'Choir Member',
+      joinedAt: new Date().toISOString()
+    };
+    newMember.pinHash = await hashPin(newMember.id, pin);
+    data.members.push(newMember);
+    await completeLogin(newMember);
+  };
 }
 
 /* ---------------- HOME ---------------- */
@@ -1007,6 +1220,12 @@ function renderHome(){
           <div class="li-sub">${loggedInMember.position || 'Choir Member'} · ${loggedInMember.voicePart || 'Voice part not set'}</div>
         </div>
       </div>
+      ${isRealAdmin() ? `
+        <p class="desc" style="margin:14px 0 6px;font-weight:700;color:var(--text);">Use the app as</p>
+        <div class="seg" style="margin-bottom:0;">
+          <button type="button" class="${memberView ? '' : 'active'}" data-view-mode="admin">Administrator</button>
+          <button type="button" class="${memberView ? 'active' : ''}" data-view-mode="member">Member</button>
+        </div>` : ''}
       <button class="btn danger" id="logout-btn" style="margin-top:14px;width:100%;justify-content:center;display:flex;">Log out</button>
     </div>
   `;
@@ -1148,6 +1367,7 @@ function renderWanachama(){
     if(admin){
       actions = `<div class="li-actions">
         <button class="btn ghost small" data-toggle-role="${m.id}">${m.role==='admin' ? 'Make member' : 'Make admin'}</button>
+        ${(m.pinHash || m.deviceId) && !isSelf ? `<button class="btn ghost small" data-reset-login="${m.id}">Reset login</button>` : ''}
         <button class="btn danger" data-del-member="${m.id}">Remove</button>
       </div>`;
     }
@@ -1386,30 +1606,37 @@ function renderSongs(){
   const items = data.songs.map(s => `
     <div class="song-item ${openSongId === s.id ? 'open' : ''}">
       <div class="song-head" data-toggle-song="${s.id}">
-        <div><div class="song-title">${s.title}</div><div class="song-cat">${s.category || 'Choir song'}</div></div>
+        <div style="flex:1;min-width:0;"><div class="song-title">${s.title}</div><div class="song-cat">${s.category || 'Choir song'}</div></div>
+        ${admin ? `<div class="song-actions">
+          <button class="btn ghost small" data-edit-libsong="${s.id}">Edit</button>
+          <button class="btn danger small" data-del-song="${s.id}">Delete</button>
+        </div>` : ''}
         <svg class="song-chevron" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </div>
       <div class="song-body">
         <div class="song-body-inner">
           ${s.audioUrl ? `<audio controls src="${s.audioUrl}"></audio>` : `<p class="desc" style="margin:8px 0 0;">No audio uploaded for this song.</p>`}
           <div class="lyrics">${s.lyrics || 'No lyrics added yet.'}</div>
-          ${admin ? `<div style="margin-top:10px;text-align:right;"><button class="btn danger" data-del-song="${s.id}">Remove</button></div>` : ''}
         </div>
       </div>
     </div>`).join('');
 
+  const ed = editingLibSongId ? data.songs.find(x=>x.id===editingLibSongId) : null;
+  if(editingLibSongId && !ed) editingLibSongId = null;
+  const v = (k)=> ed ? escapeHtml(ed[k] || '') : '';
   const formHtml = admin ? `
-    <div class="card">
-      <h2>Add a song</h2>
-      <p class="desc">Build a library of the choir's songs, with lyrics and an optional audio link.</p>
+    <div class="card" id="song-form-card" ${ed ? 'style="border-color:var(--primary);"' : ''}>
+      <h2>${ed ? 'Edit song' : 'Add a song'}</h2>
+      <p class="desc">${ed ? 'Update the details below, then save.' : "Build a library of the choir's songs, with lyrics and an optional audio link."}</p>
       <div class="row">
-        <input type="text" id="song-title" placeholder="Song title" style="flex:1;min-width:150px;">
-        <input type="text" id="song-cat" placeholder="Category (e.g. Swahili, English)" style="flex:1;min-width:150px;">
+        <input type="text" id="song-title" placeholder="Song title" value="${v('title')}" style="flex:1;min-width:150px;">
+        <input type="text" id="song-cat" placeholder="Category (e.g. Swahili, English)" value="${v('category')}" style="flex:1;min-width:150px;">
       </div>
-      <div class="row" style="width:100%;"><textarea id="song-lyrics" placeholder="Lyrics" style="width:100%;"></textarea></div>
+      <div class="row" style="width:100%;"><textarea id="song-lyrics" placeholder="Lyrics" style="width:100%;">${v('lyrics')}</textarea></div>
       <div class="row">
-        <input type="url" id="song-audio" placeholder="Audio link (optional)" style="flex:1;min-width:150px;">
-        <button class="btn" id="add-song">Add song</button>
+        <input type="url" id="song-audio" placeholder="Audio link (optional)" value="${v('audioUrl')}" style="flex:1;min-width:150px;">
+        <button class="btn" id="add-song">${ed ? 'Save changes' : 'Add song'}</button>
+        ${ed ? '<button class="btn ghost" id="cancel-song-edit">Cancel</button>' : ''}
       </div>
     </div>` : '';
 
@@ -1789,66 +2016,10 @@ async function processCheckinCode(codeRaw){
 
 /* ---------------- HANDLERS ---------------- */
 function attachHandlers(){
-  const loginSearchEl = document.getElementById('login-search');
-  if(loginSearchEl) loginSearchEl.oninput = (e)=>{ loginSearch = e.target.value.trim().toLowerCase(); render(); };
-  document.querySelectorAll('[data-login-as]').forEach(b=>{
-    b.onclick = ()=>{
-      const member = data.members.find(m=>m.id===b.dataset.loginAs);
-      setCurrentUser(b.dataset.loginAs).then(async ()=>{
-        if(member) await lockDeviceTo(member);
-        currentTab='home'; render();
-      });
-    };
+  attachAuthHandlers();
+  document.querySelectorAll('[data-view-mode]').forEach(b=>{
+    b.onclick = ()=>{ memberView = b.dataset.viewMode === 'member'; lsSet(MEMBER_VIEW_KEY, memberView ? '1' : null); render(true); };
   });
-  const goSignup = document.getElementById('go-signup');
-  if(goSignup) goSignup.onclick = ()=>{ loginView='signup'; render(); };
-  const backLogin = document.getElementById('back-to-login');
-  if(backLogin) backLogin.onclick = ()=>{ loginView='pick'; render(); };
-
-  const roleBtnMember = document.getElementById('role-btn-member');
-  const roleBtnAdmin = document.getElementById('role-btn-admin');
-  if(roleBtnMember && roleBtnAdmin){
-    const setRole = (r)=>{
-      roleBtnMember.classList.toggle('active', r==='member');
-      roleBtnAdmin.classList.toggle('active', r==='admin');
-      document.getElementById('passcode-row').style.display = r==='admin' ? 'flex' : 'none';
-      document.getElementById('passcode-hint').style.display = r==='admin' ? 'block' : 'none';
-      document.getElementById('su-role-selected').value = r;
-    };
-    roleBtnMember.onclick = ()=> setRole('member');
-    roleBtnAdmin.onclick = ()=> setRole('admin');
-  }
-
-  const submitSignup = document.getElementById('submit-signup');
-  if(submitSignup) submitSignup.onclick = ()=>{
-    const name = document.getElementById('su-name').value.trim();
-    if(!name){ document.getElementById('su-name').focus(); return; }
-    const role = document.getElementById('su-role-selected').value;
-    if(role === 'admin'){
-      const noAdminYet = !data.members.some(m=>m.role==='admin');
-      const pass = document.getElementById('su-passcode').value.trim();
-      if(noAdminYet){
-        if(pass.length < 4){ showAlertModal('Please create a passcode with at least 4 characters.'); return; }
-        data.adminPasscode = pass;
-      } else {
-        if(!data.adminPasscode || pass !== data.adminPasscode){ showAlertModal('Incorrect admin passcode. Please try again, or switch to Choir Member.'); return; }
-      }
-    }
-    const position = document.getElementById('su-position').value;
-    const newMember = {
-      id: uid(), name,
-      gender: document.getElementById('su-gender').value,
-      voicePart: document.getElementById('su-voice').value,
-      position, role, isLeader: position !== 'Choir Member',
-      joinedAt: new Date().toISOString()
-    };
-    data.members.push(newMember);
-    saveData();
-    setCurrentUser(newMember.id).then(async ()=>{
-      await lockDeviceTo(newMember);
-      loginView='pick'; currentTab='home'; render();
-    });
-  };
 
   const logoutBtn = document.getElementById('logout-btn');
   if(logoutBtn) logoutBtn.onclick = ()=>{
@@ -1969,6 +2140,14 @@ function attachHandlers(){
     });
     saveData(); render();
   };
+  document.querySelectorAll('[data-reset-login]').forEach(b=>{
+    b.onclick = ()=>{
+      const m = data.members.find(x=>x.id===b.dataset.resetLogin); if(!m) return;
+      showConfirmModal(`Reset ${m.name}'s login? Their PIN and registered phone will be cleared, so they can sign in again on any phone and choose a new PIN.`, ()=>{
+        delete m.pinHash; delete m.deviceId; saveData(); render(true); showToast('Login reset for ' + m.name);
+      });
+    };
+  });
   document.querySelectorAll('[data-del-member]').forEach(b=>{
     b.onclick = ()=>{ data.members = data.members.filter(m=>m.id!==b.dataset.delMember); saveData(); render(); };
   });
@@ -2046,15 +2225,37 @@ function attachHandlers(){
   if(addSong) addSong.onclick = ()=>{
     const title = document.getElementById('song-title').value.trim();
     if(!title){ document.getElementById('song-title').focus(); return; }
-    data.songs.push({ id: uid(), title, category: document.getElementById('song-cat').value.trim(),
-      lyrics: document.getElementById('song-lyrics').value.trim(), audioUrl: document.getElementById('song-audio').value.trim() });
-    saveData(); render();
+    const fields = { title, category: document.getElementById('song-cat').value.trim(),
+      lyrics: document.getElementById('song-lyrics').value.trim(), audioUrl: document.getElementById('song-audio').value.trim() };
+    const existing = editingLibSongId ? data.songs.find(x=>x.id===editingLibSongId) : null;
+    if(existing){ Object.assign(existing, fields); showToast('Song updated'); }
+    else data.songs.push({ id: uid(), ...fields });
+    editingLibSongId = null;
+    saveData(); render(true);
   };
+  const cancelSongEdit = document.getElementById('cancel-song-edit');
+  if(cancelSongEdit) cancelSongEdit.onclick = ()=>{ editingLibSongId = null; render(true); };
+  document.querySelectorAll('[data-edit-libsong]').forEach(b=>{
+    b.onclick = (e)=>{
+      e.stopPropagation();
+      editingLibSongId = b.dataset.editLibsong; render(true);
+      const card = document.getElementById('song-form-card'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+    };
+  });
   document.querySelectorAll('[data-toggle-song]').forEach(el=>{
     el.onclick = ()=>{ const id = el.dataset.toggleSong; openSongId = openSongId === id ? null : id; render(); };
   });
   document.querySelectorAll('[data-del-song]').forEach(b=>{
-    b.onclick = ()=>{ data.songs = data.songs.filter(s=>s.id!==b.dataset.delSong); saveData(); render(); };
+    b.onclick = (e)=>{
+      e.stopPropagation();
+      const song = data.songs.find(s=>s.id===b.dataset.delSong); if(!song) return;
+      showConfirmModal(`Delete "${song.title}" from the song library?`, ()=>{
+        data.songs = data.songs.filter(s=>s.id!==song.id);
+        if(editingLibSongId === song.id) editingLibSongId = null;
+        if(openSongId === song.id) openSongId = null;
+        saveData(); render(true);
+      });
+    };
   });
 
 
