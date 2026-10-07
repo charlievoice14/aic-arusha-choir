@@ -181,6 +181,27 @@ input,textarea,select{ font-size:16px !important; }
   .locked-chip .account-avatar{flex-shrink:0;}
   .song-actions{display:flex;gap:6px;margin-right:6px;}
   .song-actions .btn{padding:6px 10px;font-size:12px;}
+
+  /* ===== Offline screen ===== */
+  #offline-screen{position:fixed;inset:0;z-index:20000;background:var(--bg);display:none;flex-direction:column;}
+  #offline-screen.show{display:flex;animation:offIn .25s ease;}
+  @keyframes offIn{from{opacity:0}to{opacity:1}}
+  .off-head{background:linear-gradient(90deg,var(--primary-dark),var(--primary));padding:calc(env(safe-area-inset-top) + 18px) 20px 18px;text-align:center;font-family:'Inter',sans-serif;font-weight:800;font-size:18px;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.35);}
+  .off-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  .off-rings{position:relative;width:300px;height:300px;display:flex;align-items:center;justify-content:center;}
+  .off-rings .r{position:absolute;border-radius:50%;background:rgba(255,255,255,0.025);}
+  .off-rings .r1{inset:0;} .off-rings .r2{inset:36px;background:rgba(255,255,255,0.035);} .off-rings .r3{inset:64px;background:var(--card);}
+  .off-disc{position:relative;width:150px;height:150px;border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary));display:flex;align-items:center;justify-content:center;box-shadow:0 18px 40px -10px rgba(255,125,146,.55);animation:offPulse 2.6s ease-in-out infinite;}
+  .off-disc::after{content:'';position:absolute;inset:26px;border-radius:50%;background:rgba(0,0,0,0.12);box-shadow:inset 0 2px 10px rgba(0,0,0,.18);}
+  .off-disc svg{position:relative;z-index:1;width:56px;height:56px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  @keyframes offPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  .off-spark{position:absolute;color:var(--primary);opacity:.75;}
+  .off-spark svg{width:16px;height:16px;fill:currentColor;}
+  .off-dot{position:absolute;width:11px;height:11px;border-radius:50%;border:2px solid var(--primary);opacity:.6;}
+  .off-sq{position:absolute;width:7px;height:7px;background:var(--primary);opacity:.35;border-radius:1px;}
+  .off-body h2{font-family:'Fraunces',serif;font-size:30px;margin:26px 0 8px;color:var(--text);}
+  .off-body p{color:var(--text-soft);font-size:14.5px;line-height:1.55;max-width:280px;margin:0 0 26px;}
+  .off-body .btn{height:50px;min-width:200px;border-radius:12px;font-size:15px;display:flex;align-items:center;justify-content:center;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -289,6 +310,25 @@ input,textarea,select{ font-size:16px !important; }
 </style>
 </head>
 <body>
+<div id="offline-screen" role="alertdialog" aria-live="assertive">
+  <div class="off-head">You are offline</div>
+  <div class="off-body">
+    <div class="off-rings">
+      <div class="r r1"></div><div class="r r2"></div><div class="r r3"></div>
+      <span class="off-spark" style="top:96px;left:22px;"><svg viewBox="0 0 24 24"><path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z"/></svg></span>
+      <span class="off-spark" style="top:72px;right:30px;"><svg viewBox="0 0 24 24"><path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z"/></svg></span>
+      <span class="off-spark" style="bottom:40px;left:66px;"><svg viewBox="0 0 24 24"><path d="M12 2l2 8 8 2-8 2-2 8-2-8-8-2 8-2z"/></svg></span>
+      <span class="off-dot" style="top:38px;left:140px;"></span>
+      <span class="off-dot" style="bottom:46px;right:96px;"></span>
+      <span class="off-sq" style="top:140px;right:24px;"></span>
+      <span class="off-sq" style="bottom:72px;right:40px;"></span>
+      <div class="off-disc"><svg viewBox="0 0 24 24"><path d="M12 13v8M9 21h6"/><circle cx="12" cy="11" r="1.6" fill="#fff"/><path d="M8.5 7.5a5 5 0 000 7M15.5 7.5a5 5 0 010 7M5.6 4.6a9 9 0 000 12.8M18.4 4.6a9 9 0 010 12.8"/></svg></div>
+    </div>
+    <h2>Whoops!</h2>
+    <p>No internet connection found. Check your connection or try again.</p>
+    <button class="btn primary-glow" id="offline-retry">Try again</button>
+  </div>
+</div>
 <div id="sync-dot" title="Connecting…"></div>
 <div class="phone">
   <header class="appbar">
@@ -421,8 +461,36 @@ function genCode(){
   return c;
 }
 
+const APP_VERSION = 5;   // bump when releasing; older copies of the app are blocked from saving
+const COLLECTIONS = ['schedule','members','sessions','announcements','songs','events'];
 function mergeSharedDefaults(d){
-  return { schedule:[], members:[], sessions:[], announcements:[], songs:[], events:[], adminPasscode:null, ...d };
+  const out = { schedule:[], members:[], sessions:[], announcements:[], songs:[], events:[], adminPasscode:null, removed:{}, ...d };
+  if(!out.removed || typeof out.removed !== 'object') out.removed = {};
+  return purgeRemoved(out);
+}
+/* Anything deleted is remembered in data.removed, so it can never be brought back by another phone. */
+function purgeRemoved(d){
+  const r = d.removed || {};
+  COLLECTIONS.forEach(k=>{ if(Array.isArray(d[k])) d[k] = d[k].filter(x=>!(x && x.id && r[x.id])); });
+  return d;
+}
+function recordRemovals(base, local){
+  local.removed = { ...(base.removed||{}), ...(local.removed||{}) };
+  const now = Date.now();
+  COLLECTIONS.forEach(k=>{
+    const keep = new Set((local[k]||[]).map(x=>x && x.id));
+    (base[k]||[]).forEach(x=>{ if(x && x.id && !keep.has(x.id)) local.removed[x.id] = now; });
+  });
+  return local;
+}
+let updateBannerShown = false;
+function showUpdateBanner(){
+  if(updateBannerShown) return; updateBannerShown = true;
+  const bar = document.createElement('div');
+  bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:86px;z-index:10000;background:var(--primary);color:#1A0E18;border-radius:12px;padding:12px 14px;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.4);';
+  bar.innerHTML = '<span style="flex:1;">A new version of the app is available.</span><button style="background:#1A0E18;color:var(--primary);border:0;border-radius:8px;padding:8px 12px;font-weight:700;">Update</button>';
+  bar.querySelector('button').onclick = ()=>{ location.reload(); };
+  document.body.appendChild(bar);
 }
 
 /* ================= FIREBASE BACKEND (live sync across devices) ================= */
@@ -517,6 +585,7 @@ document.addEventListener('focusout', ()=>{
 });
 
 function applyRemote(remote){
+  if(remote && remote.appVersion > APP_VERSION) showUpdateBanner();
   remote = mergeSharedDefaults(remote || {});
   // keep any edits this device hasn't finished saving yet
   const next = baseData ? merge3(baseData, data, remote) : remote;
@@ -547,7 +616,7 @@ async function loadData(){
   if(BACKEND === 'firebase'){
     try{
       const snap = await sharedRef.get();
-      if(snap.exists){ data = mergeSharedDefaults(snap.data()); }
+      if(snap.exists){ const raw = snap.data(); if(raw.appVersion > APP_VERSION) showUpdateBanner(); data = mergeSharedDefaults(raw); }
       baseData = clone(data);
     }catch(e){ console.error('Failed to load shared data', e); }
     subscribeSharedData();
@@ -569,8 +638,9 @@ async function reloadSharedData(){
 
 function saveData(){
   if(BACKEND !== 'firebase') return Promise.resolve();
-  const local = clone(data);
   const base = clone(baseData || {});
+  const local = recordRemovals(base, clone(data));
+  data.removed = clone(local.removed);
   setSyncStatus('saving');
   saveChain = saveChain.then(async ()=>{
     try{
@@ -578,7 +648,9 @@ function saveData(){
       await fsDb.runTransaction(async (tx)=>{
         const snap = await tx.get(sharedRef);
         const remote = snap.exists ? mergeSharedDefaults(snap.data()) : mergeSharedDefaults({});
+        if(remote.appVersion > APP_VERSION){ throw Object.assign(new Error('outdated'), {code:'outdated'}); }
         merged = mergeSharedDefaults(merge3(base, local, remote));
+        merged.appVersion = APP_VERSION;
         tx.set(sharedRef, merged);
       });
       baseData = clone(merged);
@@ -587,7 +659,8 @@ function saveData(){
     }catch(e){
       console.error('Failed to save data', e);
       setSyncStatus('offline');
-      showToast('Could not save — check your internet connection.');
+      if(e && (e.code === 'outdated' || e.code === 'permission-denied')){ showUpdateBanner(); showToast('This copy of the app is out of date — tap Update.'); }
+      else showToast('Could not save — check your internet connection.');
     }
   });
   return saveChain;
@@ -2149,7 +2222,13 @@ function attachHandlers(){
     };
   });
   document.querySelectorAll('[data-del-member]').forEach(b=>{
-    b.onclick = ()=>{ data.members = data.members.filter(m=>m.id!==b.dataset.delMember); saveData(); render(); };
+    b.onclick = ()=>{
+      const m = data.members.find(x=>x.id===b.dataset.delMember); if(!m) return;
+      showConfirmModal(`Remove ${m.name} from the choir? This can't be undone.`, ()=>{
+        data.members = data.members.filter(x=>x.id!==m.id);
+        saveData(); render(true); showToast(m.name + ' removed');
+      });
+    };
   });
   document.querySelectorAll('[data-toggle-role]').forEach(b=>{
     b.onclick = ()=>{
@@ -2438,6 +2517,35 @@ loadData();
 <script>
 document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
 document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefault(); }, {passive:false});
+</script>
+<script>
+(function(){
+  const scr = document.getElementById('offline-screen');
+  const btn = document.getElementById('offline-retry');
+  function show(){ scr.classList.add('show'); }
+  function hide(){
+    if(!scr.classList.contains('show')) return;
+    scr.classList.remove('show');
+    // app couldn't start without internet — load it properly now
+    if(typeof BACKEND !== 'undefined' && BACKEND === 'none'){ location.reload(); return; }
+    if(typeof reloadSharedData === 'function') reloadSharedData();
+  }
+  async function check(){
+    if(!navigator.onLine) return false;
+    try{ await fetch('https://www.gstatic.com/generate_204', {mode:'no-cors', cache:'no-store'}); return true; }
+    catch(e){ return false; }
+  }
+  window.addEventListener('offline', show);
+  window.addEventListener('online', ()=>{ check().then(ok=>{ if(ok) hide(); }); });
+  btn.onclick = async ()=>{
+    btn.textContent = 'Checking…'; btn.disabled = true;
+    const ok = await check();
+    btn.textContent = 'Try again'; btn.disabled = false;
+    if(ok) hide(); else { btn.animate([{transform:'translateX(0)'},{transform:'translateX(-6px)'},{transform:'translateX(6px)'},{transform:'translateX(0)'}],{duration:280}); }
+  };
+  if(!navigator.onLine) show();
+  else if(!window.firebase) check().then(ok=>{ if(!ok) show(); });
+})();
 </script>
 </body>
 </html>
