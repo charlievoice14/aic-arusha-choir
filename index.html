@@ -202,6 +202,75 @@ input,textarea,select{ font-size:16px !important; }
   .off-body h2{font-family:'Fraunces',serif;font-size:30px;margin:26px 0 8px;color:var(--text);}
   .off-body p{color:var(--text-soft);font-size:14.5px;line-height:1.55;max-width:280px;margin:0 0 26px;}
   .off-body .btn{height:50px;min-width:200px;border-radius:12px;font-size:15px;display:flex;align-items:center;justify-content:center;}
+
+  /* ===== v6: members, details, profile, attendance ===== */
+  .avatar{border-radius:50%;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;overflow:hidden;font-family:'Inter',sans-serif;}
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 14px;}
+  .mtitle{font-family:'Fraunces',serif;font-size:28px;margin:0;color:var(--text);line-height:1.1;}
+  .msub{font-size:12.5px;color:var(--text-soft);margin-top:4px;}
+  .fab{width:48px;height:48px;border-radius:50%;border:0;background:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:0 8px 20px -6px rgba(255,125,146,.6);}
+  .fab svg{width:22px;height:22px;stroke:#1A0E18;stroke-width:2.4;fill:none;stroke-linecap:round;}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;margin-bottom:10px;scrollbar-width:none;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex-shrink:0;height:36px;padding:0 15px;border-radius:999px;border:1px solid var(--border);background:var(--card);color:var(--text-soft);font-weight:600;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;white-space:nowrap;}
+  .chip.on{background:var(--text);color:var(--bg);border-color:var(--text);}
+  .mtools{display:flex;align-items:center;gap:10px;margin:0 2px 14px;font-size:12.5px;color:var(--text-soft);}
+  .mtools select{flex:1;min-width:0;height:38px;}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px;overflow:hidden;}
+  .mcard.tap{cursor:pointer;transition:transform .12s, border-color .2s;} .mcard.tap:active{transform:scale(.985);border-color:var(--primary);}
+  .mcard-top{display:flex;align-items:center;gap:12px;min-width:0;}
+  .mcard-id{flex:1;min-width:0;}
+  .mcard-name{font-weight:700;font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mcard-pos{font-size:12.5px;color:var(--text-soft);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mbadge{flex-shrink:0;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;}
+  .mbadge.admin{background:var(--purple-soft);color:var(--purple);} .mbadge.leader{background:var(--gold-soft);color:var(--gold);}
+  .mcard-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);margin-top:12px;padding-top:12px;}
+  .mcard-grid div{min-width:0;} .mcard-grid div:nth-child(2){text-align:center;} .mcard-grid div:nth-child(3){text-align:right;}
+  .mcard-grid b{display:block;font-size:13px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mcard-grid span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .unlock-card{display:flex;gap:12px;align-items:flex-start;}
+  .unlock-ic{width:40px;height:40px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .unlock-ic svg,.drow-ic svg{width:20px;height:20px;fill:none;stroke:var(--primary);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .dhero,.phero{background:linear-gradient(160deg,var(--card2),var(--card));border:1px solid var(--border);border-radius:22px;padding:14px 14px 18px;margin-bottom:16px;text-align:center;position:relative;overflow:hidden;}
+  .dhero::before,.phero::before{content:'';position:absolute;width:260px;height:260px;border-radius:50%;background:var(--primary-soft);top:-150px;right:-90px;}
+  .dhero > *,.phero > *{position:relative;}
+  .dhero-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-weight:700;color:var(--text);font-size:15px;}
+  .dhero-bar .auth-back svg{stroke:var(--primary);}
+  .dhero .avatar{margin:0 auto;box-shadow:0 0 0 4px var(--card),0 0 0 6px var(--primary-soft);}
+  .dname{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--text);margin-top:12px;word-break:break-word;}
+  .dpos{font-size:13px;color:var(--text-soft);margin-top:3px;}
+  .dacts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px;}
+  .dact{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.03);color:var(--text);text-decoration:none;font-size:11.5px;font-weight:600;min-width:0;}
+  .dact svg{width:20px;height:20px;fill:none;stroke:var(--primary);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .dact.off{opacity:.35;}
+  .dcard{padding:6px 16px;}
+  .drow{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);min-width:0;}
+  .drow:last-child{border-bottom:0;}
+  .drow-ic{width:36px;height:36px;border-radius:10px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .drow-txt{flex:1;min-width:0;}
+  .drow-txt span{display:block;font-size:11.5px;color:var(--text-faint);}
+  .drow-txt b{display:block;font-size:14.5px;color:var(--text);font-weight:600;margin-top:2px;overflow-wrap:anywhere;}
+  .drow-txt b i{color:var(--text-faint);font-weight:500;font-style:normal;}
+  .drow-txt small{display:block;font-size:12px;color:var(--text-soft);margin-top:2px;}
+  .dmanage{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .dmanage .btn{justify-content:center;display:flex;}
+  .pphoto{width:120px;height:120px;border-radius:50%;margin:4px auto 0;position:relative;box-shadow:0 0 0 4px var(--card),0 0 0 6px var(--primary-soft);}
+  .pphoto img,.pphoto-ph{width:100%;height:100%;border-radius:50%;object-fit:cover;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;font-size:44px;font-weight:700;}
+  .pcam{position:absolute;right:-2px;bottom:-2px;width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;border:3px solid var(--card);}
+  .pcam svg{width:18px;height:18px;fill:none;stroke:#1A0E18;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .plink{background:none;border:0;color:var(--primary);font-size:12.5px;font-weight:600;margin-top:10px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .live-chip{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:rgba(61,213,152,.14);color:var(--present);}
+  .live-chip i{width:8px;height:8px;border-radius:50%;background:var(--present);animation:livePulse 1.4s infinite;}
+  .live-chip.wait{background:var(--late-bg);color:var(--late);} .live-chip.closed{background:rgba(255,255,255,.06);color:var(--text-soft);}
+  @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.3}}
+  details.extra-session summary{cursor:pointer;list-style:none;} details.extra-session summary::-webkit-details-marker{display:none;}
+  details.extra-session summary::after{content:'＋';float:right;color:var(--primary);font-weight:700;}
+  details.extra-session[open] summary::after{content:'－';}
+  .sms-opt{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text-soft);margin:4px 0 12px;}
+  .sms-opt input{width:18px;height:18px;accent-color:var(--primary);}
+  .roll-row{gap:8px;flex-wrap:wrap;} .status-btns{flex-wrap:wrap;}
+  input[type=tel],input[type=email],input[type=number]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 11px;font-family:'Inter',sans-serif;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -461,7 +530,7 @@ function genCode(){
   return c;
 }
 
-const APP_VERSION = 5;   // bump when releasing; older copies of the app are blocked from saving
+const APP_VERSION = 6;   // bump when releasing; older copies of the app are blocked from saving
 const COLLECTIONS = ['schedule','members','sessions','announcements','songs','events'];
 function mergeSharedDefaults(d){
   const out = { schedule:[], members:[], sessions:[], announcements:[], songs:[], events:[], adminPasscode:null, removed:{}, ...d };
@@ -570,7 +639,7 @@ async function detectBackend(){
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     fsDb = firebase.firestore();
     try{ await fsDb.enablePersistence({ synchronizeTabs:true }); }catch(e){ /* offline cache not available — fine */ }
-    try{ await firebase.auth().signInAnonymously(); }catch(e){ console.warn('Anonymous sign-in failed (enable it in Firebase Auth):', e); }
+    try{ const cred = await firebase.auth().signInAnonymously(); fsUid = cred && cred.user ? cred.user.uid : null; }catch(e){ console.warn('Anonymous sign-in failed (enable it in Firebase Auth):', e); }
     sharedRef = fsDb.doc(SHARED_DOC_PATH);
     BACKEND = 'firebase';
   }catch(e){ console.error('Firebase init failed', e); BACKEND = 'none'; }
@@ -626,6 +695,7 @@ async function loadData(){
   resolveBoundMember();
   updateNotifIcon();
   render();
+  if(BACKEND === 'firebase'){ initPrivateData(); setTimeout(sessionTick, 1500); }
 }
 
 async function reloadSharedData(){
@@ -723,7 +793,7 @@ function isConnected(){ return BACKEND === 'firebase'; }
 
 function fmtDate(d){ const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }
 function fmtDateShort(d){ const dt = new Date(d + "T00:00:00"); return dt.toLocaleDateString('en-US', { day:'numeric', month:'short' }); }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+function todayStr(){ const d=new Date(), z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
 function nowTime(){ return new Date().toTimeString().slice(0,5); }
 function labelFor(status){ return status==='present' ? 'On time' : status==='late' ? 'Late' : 'Absent'; }
 
@@ -734,7 +804,8 @@ function nextOccurrence(dayName){
   let diff = (idx - curIdx + 7) % 7;
   const d = new Date(now);
   d.setDate(now.getDate() + diff);
-  return { date: d.toISOString().slice(0,10), daysAway: diff };
+  const z=n=>String(n).padStart(2,'0');
+  return { date: d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()), daysAway: diff };
 }
 function scheduleNextInfo(ev){
   if(ev.date){
@@ -794,6 +865,8 @@ function logOut(name){
       scanMessage = '';
       loginView = 'welcome';
       authError = ''; loginAltMode = false;
+      adminUnlocked = false; profiles = {}; if(unsubProfiles){ unsubProfiles(); unsubProfiles = null; }
+      memberDetailId = null; profileEditId = null;
       loginSearch = '';
       document.getElementById('global-search').value = '';
       render();
@@ -850,6 +923,7 @@ function jumpTo(tab){
     stopScanner();
   }
   if(tab !== 'events'){ editingEventId = null; editingSongRef = null; }
+  memberDetailId = null; profileEditId = null; pendingPhoto = undefined;
   const fromIdx = TAB_ORDER.indexOf(currentTab);
   const toIdx = TAB_ORDER.indexOf(tab);
   pendingNavDir = (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) ? null : (toIdx > fromIdx ? 'fwd' : 'back');
@@ -880,6 +954,7 @@ function paintContent(wrap){
   else if(currentTab === 'ripoti') wrap.innerHTML = renderRipoti();
   else if(currentTab === 'songs') wrap.innerHTML = renderSongs();
   else if(currentTab === 'events') wrap.innerHTML = renderEvents();
+  else if(currentTab === 'profile') wrap.innerHTML = renderProfileEdit();
   attachHandlers();
 }
 
@@ -1032,21 +1107,31 @@ function renderSignup(){
     </div>`;
 }
 
+function authRerender(){
+  const vals = {};
+  document.querySelectorAll('#main-inner input[id], #main-inner select[id]').forEach(el=>{ if(el.type !== 'file') vals[el.id] = el.value; });
+  render(true);
+  Object.entries(vals).forEach(([id,v])=>{ const el = document.getElementById(id); if(el) el.value = v; });
+  const role = vals['su-role-selected'];
+  if(role === 'admin'){ const btn = document.getElementById('role-btn-admin'); if(btn) btn.click(); }
+}
 async function completeLogin(member){
   // one account per phone, one phone per account (administrators are exempt)
   if(member.role !== 'admin'){
     const myDevice = getDeviceId();
     if(deviceIsLocked() && boundMember.id !== member.id){
-      authError = `This phone is registered to ${boundMember.name}. Each phone can only be used by one member.`; render(true); return false;
+      authError = `This phone is registered to ${boundMember.name}. Each phone can only be used by one member.`; authRerender(); return false;
     }
     if(member.deviceId && member.deviceId !== myDevice){
-      authError = 'This account is already registered on another phone. Ask an administrator to reset your login.'; render(true); return false;
+      authError = 'This account is already registered on another phone. Ask an administrator to reset your login.'; authRerender(); return false;
     }
     member.deviceId = myDevice;
   }
   member.lastLoginAt = new Date().toISOString();
   saveData();
   await setCurrentUser(member.id);
+  refreshPrivateAccess();
+  setTimeout(sessionTick, 800);
   await lockDeviceTo(member);
   authError = ''; loginAltMode = false; loginView = 'welcome'; currentTab = 'home';
   render();
@@ -1088,19 +1173,19 @@ function attachAuthHandlers(){
     const locked = deviceIsLocked() && !loginAltMode;
     const pin = (document.getElementById('si-pin').value || '').trim();
     const name = locked ? boundMember.name : (document.getElementById('si-name').value || '');
-    if(!locked && !normName(name)){ authError = 'Please enter your full name.'; render(true); return; }
-    if(!/^\d{4,6}$/.test(pin)){ authError = 'Your PIN must be 4 to 6 digits.'; render(true); return; }
-    if(!isConnected()){ authError = "Can't reach the choir database. Check your internet connection."; render(true); return; }
+    if(!locked && !normName(name)){ authError = 'Please enter your full name.'; authRerender(); return; }
+    if(!/^\d{4,6}$/.test(pin)){ authError = 'Your PIN must be 4 to 6 digits.'; authRerender(); return; }
+    if(!isConnected()){ authError = "Can't reach the choir database. Check your internet connection."; authRerender(); return; }
     await reloadSharedData();
     const candidates = locked ? [boundMember] : data.members.filter(m=>normName(m.name) === normName(name));
-    if(!candidates.length){ authError = "We couldn't find that name. Check the spelling, or tap Sign up to join."; render(true); return; }
+    if(!candidates.length){ authError = "We couldn't find that name. Check the spelling, or tap Sign up to join."; authRerender(); return; }
     let match = null;
     for(const m of candidates){ if(m.pinHash && m.pinHash === await hashPin(m.id, pin)){ match = m; break; } }
     if(!match){
       const fresh = candidates.find(m=>!m.pinHash);
       if(fresh){ fresh.pinHash = await hashPin(fresh.id, pin); match = fresh; }
     }
-    if(!match){ authError = 'Incorrect PIN. Please try again, or ask an administrator to reset it.'; render(true); return; }
+    if(!match){ authError = 'Incorrect PIN. Please try again, or ask an administrator to reset it.'; authRerender(); return; }
     await completeLogin(match);
   };
 
@@ -1109,7 +1194,7 @@ function attachAuthHandlers(){
     const name = document.getElementById('su-name').value.trim().replace(/\s+/g,' ');
     const role = document.getElementById('su-role-selected').value;
     const pin = (document.getElementById('su-pin').value || '').trim();
-    const fail = (msg)=>{ authError = msg; render(true); window.scrollTo(0,0); };
+    const fail = (msg)=>{ authError = msg; authRerender(); window.scrollTo(0,0); };
     if(!name){ return fail('Please enter your full name.'); }
     if(!/^\d{4,6}$/.test(pin)){ return fail('Please create a PIN of 4 to 6 digits.'); }
     if(!isConnected()){ return fail("Can't reach the choir database. Check your internet connection."); }
@@ -1119,12 +1204,12 @@ function attachAuthHandlers(){
     if(role === 'admin'){
       const noAdminYet = !data.members.some(m=>m.role==='admin');
       const pass = document.getElementById('su-passcode').value.trim();
-      if(noAdminYet){
-        if(pass.length < 4){ return fail('Please create an admin passcode with at least 4 characters.'); }
-        data.adminPasscode = pass;
-      } else if(!data.adminPasscode || pass !== data.adminPasscode){
-        return fail('Incorrect admin passcode. Try again, or join as a Choir Member.');
+      if(pass.length < 4){ return fail(noAdminYet ? 'Please create an admin passcode with at least 4 characters.' : 'Please enter the admin passcode.'); }
+      let ok = await claimAdmin(pass);
+      if(!ok && (noAdminYet || (data.adminPasscode && pass === data.adminPasscode))){
+        if(await createAdminSecret(pass)) ok = await claimAdmin(pass);
       }
+      if(!ok) return fail('Incorrect admin passcode. Try again, or join as a Choir Member.');
     }
     const position = document.getElementById('su-position').value;
     const newMember = {
@@ -1230,7 +1315,7 @@ function renderHome(){
           <div class="a-msg">${a.message}</div>
           <div class="a-date">${fmtDateShort(a.date)}</div>
         </div>
-        ${isAdmin() ? `<button class="btn danger" data-del-announcement="${a.id}">Remove</button>` : ''}
+        ${isAdmin() ? `<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;"><button class="btn ghost small" data-text-ann="${a.id}">Text members</button><button class="btn danger" data-del-announcement="${a.id}">Remove</button></div>` : ''}
       </div>
     </div>`).join('') : `<div class="empty">No announcements yet.</div>`;
 
@@ -1240,7 +1325,9 @@ function renderHome(){
       <p class="desc">Share news, rehearsal changes, or reminders with the choir.</p>
       <div class="row"><input type="text" id="ann-title" placeholder="Title" style="flex:1;min-width:150px;"></div>
       <div class="row"><textarea id="ann-msg" placeholder="Message" style="width:100%;"></textarea></div>
+      ${data.settings && data.settings.smsAuto ? `<label class="sms-opt"><input type="checkbox" id="ann-sms" checked> Send as SMS to members automatically</label>` : ''}
       <button class="btn" id="add-announcement">Post</button>
+      <label class="sms-opt" style="margin:14px 0 0;border-top:1px solid var(--border);padding-top:12px;"><input type="checkbox" id="sms-auto-toggle" ${data.settings && data.settings.smsAuto ? 'checked' : ''}> Automatic SMS is set up for this choir</label>
     </div>` : '';
 
   const upcomingEvents = [...data.events].filter(e=>e.date >= todayStr()).sort((a,b)=> a.date.localeCompare(b.date)).slice(0,6);
@@ -1287,12 +1374,13 @@ function renderHome(){
     <h3 class="sec-title">Account</h3>
     <div class="card account-card">
       <div class="account-row">
-        <div class="account-avatar">${(loggedInMember.name||'?').trim().charAt(0).toUpperCase()}</div>
+        ${avatarHtml(loggedInMember, 46)}
         <div style="min-width:0;">
           <div class="li-main">${loggedInMember.name}${isAdmin() ? '<span class="admin-chip">Admin</span>' : ''}${loggedInMember.isLeader ? '<span class="leader-chip">Leader</span>' : ''}</div>
           <div class="li-sub">${loggedInMember.position || 'Choir Member'} · ${loggedInMember.voicePart || 'Voice part not set'}</div>
         </div>
       </div>
+      <button class="btn ghost" id="edit-my-profile" style="margin-top:14px;width:100%;justify-content:center;display:flex;">Edit my profile</button>
       ${isRealAdmin() ? `
         <p class="desc" style="margin:14px 0 6px;font-weight:700;color:var(--text);">Use the app as</p>
         <div class="seg" style="margin-bottom:0;">
@@ -1410,75 +1498,535 @@ function sortMembers(list){
   return arr;
 }
 
-function renderWanachama(){
-  let members = data.members;
-  if(searchQuery){ members = members.filter(m=>m.name.toLowerCase().includes(searchQuery)); }
-  const leaders = sortMembers(members.filter(m=>m.isLeader));
-  const regular = sortMembers(members.filter(m=>!m.isLeader));
-  const admin = isAdmin();
+/* =====================================================================
+   v6: automatic sessions, private member profiles, photos, SMS, members UI
+   ===================================================================== */
+const CHECKIN_OPENS_BEFORE = 60;   // minutes before start the QR appears
+const CHECKIN_CLOSES_AFTER = 180;  // minutes after start check-in closes and absentees are recorded
+let fsUid = null;
+let adminUnlocked = false;         // this phone holds an admin claim → may read private profiles
+let profiles = {};                 // memberId -> private profile (admins: everyone; members: themselves)
+let photos = {};                   // memberId -> photo data URL (visible to all signed-in members)
+let unsubPhotos = null, unsubProfiles = null;
+let memberDetailId = null;
+let profileEditId = null;
+let profileReturnTab = 'home';
+let memberFilter = 'all';
+let showAddMember = false;
+let pendingPhoto = undefined;      // undefined = unchanged, null = remove, string = new photo
 
-  const sortOptions = [
-    ['name-asc','Name (A–Z)'],
-    ['name-desc','Name (Z–A)'],
-    ['joined-new','Join date (Newest)'],
-    ['joined-old','Join date (Oldest)'],
-    ['voice','Voice part']
-  ];
-  const sortControl = `
-    <div class="card" style="padding-bottom:14px;">
-      <div class="row" style="margin-bottom:0;align-items:center;">
-        <span style="font-size:12.5px;color:var(--text-soft);">Sort by</span>
-        <select id="member-sort" style="flex:1;min-width:140px;">
-          ${sortOptions.map(([v,l])=>`<option value="${v}" ${memberSort===v?'selected':''}>${l}</option>`).join('')}
-        </select>
-      </div>
-    </div>`;
+function localDateStr(d){ const z=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+function lateAfterMin(){ const v = data.settings && Number(data.settings.lateAfter); return Number.isFinite(v) && v >= 0 ? v : 30; }
+function sessionStartMs(s){ return new Date(s.date + 'T' + (s.startTime || '00:00') + ':00').getTime(); }
+function sessionState(s){
+  if(s.closedAt) return 'closed';
+  const now = Date.now(), st = sessionStartMs(s);
+  if(now < st - CHECKIN_OPENS_BEFORE*60000) return 'upcoming';
+  if(now > st + CHECKIN_CLOSES_AFTER*60000) return 'closed';
+  return 'open';
+}
+function hhmm(ms){ return new Date(ms).toTimeString().slice(0,5); }
+function codeFor(seed){
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let h = 2166136261, out = '';
+  for(let r=0;r<6;r++){ for(let i=0;i<seed.length;i++){ h ^= seed.charCodeAt(i) + r*31; h = Math.imul(h, 16777619) >>> 0; } out += chars[h % chars.length]; }
+  return out;
+}
+function scheduleOccursOn(ev, dateStr){
+  if(ev.date) return ev.date === dateStr;
+  const d = new Date(dateStr + 'T00:00:00');
+  return ev.day === DAYS[(d.getDay()+6)%7];
+}
+function memberJoinedBy(m, dateStr){ return !m.joinedAt || localDateStr(new Date(m.joinedAt)) <= dateStr; }
 
-  function memberRow(m){
-    const isSelf = loggedInMember && loggedInMember.id===m.id;
-    let actions = '';
-    if(admin){
-      actions = `<div class="li-actions">
-        <button class="btn ghost small" data-toggle-role="${m.id}">${m.role==='admin' ? 'Make member' : 'Make admin'}</button>
-        ${(m.pinHash || m.deviceId) && !isSelf ? `<button class="btn ghost small" data-reset-login="${m.id}">Reset login</button>` : ''}
-        <button class="btn danger" data-del-member="${m.id}">Remove</button>
-      </div>`;
-    }
-    return `
-      <div class="list-item">
-        <div>
-          <div class="li-main">${m.name}${m.role==='admin' ? '<span class="admin-chip">Admin</span>' : ''}${m.isLeader ? '<span class="leader-chip">Leader</span>' : ''}${isSelf ? '<span class="you-chip">You</span>' : ''}</div>
-          <div class="li-sub">${m.position || 'Choir Member'} · ${m.gender || '—'} · ${m.voicePart || 'Voice part not set'}</div>
-        </div>
-        ${actions}
-      </div>`;
+/* Creates today's session automatically when a scheduled rehearsal/service is about to start,
+   and records everyone who didn't check in as absent once check-in closes. */
+function ensureScheduledSessions(){
+  if(!isConnected() || !loggedInMember) return false;
+  let changed = false;
+  const today = todayStr();
+  if(isRealAdmin() && !data.codeSalt){ data.codeSalt = uid(); changed = true; }
+  data.schedule.forEach(ev=>{
+    if(!ev.time || !scheduleOccursOn(ev, today)) return;
+    const id = 'auto_' + ev.id + '_' + today;
+    if((data.removed||{})[id]) return;
+    if(data.sessions.some(s=>s.id===id || (s.scheduleId===ev.id && s.date===today))) return;
+    const st = new Date(today + 'T' + ev.time + ':00').getTime();
+    const now = Date.now();
+    if(now < st - CHECKIN_OPENS_BEFORE*60000 || now > st + CHECKIN_CLOSES_AFTER*60000) return;
+    data.sessions.push({ id, date: today, scheduleId: ev.id, title: ev.title, startTime: ev.time,
+      checkinCode: codeFor(id + (data.codeSalt||'')), records: {}, auto: true });
+    changed = true;
+  });
+  data.sessions.forEach(s=>{
+    if(s.finalized || sessionState(s) !== 'closed') return;
+    s.records = s.records || {};
+    data.members.forEach(m=>{ if(!s.records[m.id] && memberJoinedBy(m, s.date)) s.records[m.id] = { status:'absent', time:'', auto:true }; });
+    s.finalized = true; changed = true;
+  });
+  return changed;
+}
+let lastTickSig = '';
+function sessionTick(){
+  if(ensureScheduledSessions()) saveData();
+  const sig = data.sessions.filter(s=>s.date===todayStr()).map(s=>s.id+':'+sessionState(s)).join('|');
+  if(sig !== lastTickSig){
+    lastTickSig = sig;
+    if(loggedInMember && (currentTab==='mahudhurio' || currentTab==='home') && !isEditingField() && !scannerOpen) render(true);
   }
+}
+setInterval(sessionTick, 30000);
 
-  const leaderHtml = leaders.length ? leaders.map(memberRow).join('') : `<div class="empty">No leaders registered yet.</div>`;
-  const memberHtml = regular.length ? regular.map(memberRow).join('') : `<div class="empty">No members found.</div>`;
+/* ---------- Firebase: admin claim, private profiles, photos ---------- */
+function canUseCloud(){ return BACKEND === 'firebase' && fsDb; }
+async function initPrivateData(){
+  if(!canUseCloud()) return;
+  try{ fsUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : null; }catch(e){ fsUid = null; }
+  if(!unsubPhotos){
+    try{
+      unsubPhotos = fsDb.collection('photos').onSnapshot(qs=>{
+        const next = {}; qs.forEach(d=>{ const v = d.data(); if(v && v.data) next[d.id] = v.data; });
+        photos = next;
+        if(loggedInMember && !isEditingField()) render(true);
+      }, ()=>{});
+    }catch(e){}
+  }
+  await refreshPrivateAccess();
+}
+async function refreshPrivateAccess(){
+  if(!canUseCloud() || !loggedInMember) return;
+  if(isRealAdmin()){
+    await migrateAdminPasscode();
+    try{ const c = await fsDb.collection('adminClaims').doc(fsUid).get(); adminUnlocked = c.exists; }catch(e){ adminUnlocked = false; }
+  } else adminUnlocked = false;
+  if(adminUnlocked){
+    if(!unsubProfiles){
+      unsubProfiles = fsDb.collection('profiles').onSnapshot(qs=>{
+        const next = {}; qs.forEach(d=>{ next[d.id] = d.data(); }); profiles = next;
+        if(!isEditingField()) render(true);
+      }, ()=>{});
+    }
+  } else {
+    if(unsubProfiles){ unsubProfiles(); unsubProfiles = null; }
+    profiles = {};
+    try{ const p = await fsDb.collection('profiles').doc(loggedInMember.id).get(); if(p.exists) profiles[loggedInMember.id] = p.data(); }catch(e){}
+  }
+  if(!isEditingField()) render(true);
+}
+/* Older versions kept the admin passcode inside the shared choir data; move it somewhere members can't read. */
+async function migrateAdminPasscode(){
+  if(!data.adminPasscode) return;
+  const pass = data.adminPasscode;
+  try{ await fsDb.collection('secrets').doc('admin').set({ passcode: pass }); }catch(e){}
+  if(await claimAdmin(pass)){ data.adminPasscode = null; saveData(); }
+}
+async function claimAdmin(passcode){
+  if(!canUseCloud() || !fsUid) return false;
+  try{
+    await fsDb.collection('adminClaims').doc(fsUid).set({ passcode, memberId: loggedInMember ? loggedInMember.id : null, at: new Date().toISOString() });
+    return true;
+  }catch(e){
+    // this phone may already be unlocked (claims can't be overwritten)
+    try{ const c = await fsDb.collection('adminClaims').doc(fsUid).get(); return c.exists; }catch(e2){ return false; }
+  }
+}
+async function createAdminSecret(passcode){
+  try{ await fsDb.collection('secrets').doc('admin').set({ passcode }); return true; }catch(e){ return false; }
+}
+async function savePrivateProfile(memberId, fields){
+  const self = loggedInMember && loggedInMember.id === memberId;
+  const payload = { ...fields, memberId, updatedAt: new Date().toISOString() };
+  if(self) payload.ownerUid = fsUid;
+  await fsDb.collection('profiles').doc(memberId).set(payload, { merge:true });
+  profiles[memberId] = { ...(profiles[memberId]||{}), ...payload };
+}
+async function savePhoto(memberId, dataUrl){
+  const ref = fsDb.collection('photos').doc(memberId);
+  if(dataUrl === null){ await ref.delete(); delete photos[memberId]; return; }
+  const payload = { data: dataUrl, updatedAt: new Date().toISOString() };
+  if(loggedInMember && loggedInMember.id === memberId) payload.ownerUid = fsUid;
+  await ref.set(payload, { merge:true });
+  photos[memberId] = dataUrl;
+}
+function resizePhoto(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image(); const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      const S = 320, c = document.createElement('canvas'); c.width = S; c.height = S;
+      const k = Math.max(S/img.width, S/img.height), w = img.width*k, h = img.height*k;
+      c.getContext('2d').drawImage(img, (S-w)/2, (S-h)/2, w, h);
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+function avatarHtml(m, size){
+  const sz = size || 44, src = m && photos[m.id];
+  const initial = escapeHtml(((m && m.name) || '?').trim().charAt(0).toUpperCase());
+  return src
+    ? `<div class="avatar" style="width:${sz}px;height:${sz}px;"><img src="${src}" alt=""></div>`
+    : `<div class="avatar" style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz*0.4)}px;">${initial}</div>`;
+}
+function normalizePhone(p){
+  let d = String(p||'').replace(/[^\d+]/g,'');
+  if(!d) return '';
+  if(d.startsWith('+')) return d;
+  if(d.startsWith('00')) return '+' + d.slice(2);
+  if(d.startsWith('0')) return '+255' + d.slice(1);
+  if(d.startsWith('255')) return '+' + d;
+  if(d.length === 9) return '+255' + d;
+  return '+' + d;
+}
+function fmtJoined(m){ return m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-GB',{month:'short',year:'numeric'}) : '—'; }
+function fmtLongDate(s){ return s ? new Date(s+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : ''; }
+function ageFrom(s){ if(!s) return ''; const b = new Date(s+'T00:00:00'), n = new Date(); let a = n.getFullYear()-b.getFullYear(); if(n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a >= 0 ? a : ''; }
+function memberStats(id){
+  let present=0, late=0, absent=0;
+  data.sessions.forEach(s=>{ const r = (s.records||{})[id]; if(!r) return; if(r.status==='present') present++; else if(r.status==='late') late++; else absent++; });
+  const total = present+late+absent;
+  return { present, late, absent, total, pct: total ? Math.round((present+late)/total*100) : 0 };
+}
+function smsLink(numbers, body){
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const b = encodeURIComponent(body);
+  return ios ? `sms:/open?addresses=${numbers.join(',')}&body=${b}` : `sms:${numbers.join(',')}?body=${b}`;
+}
+function memberPhones(){
+  const ids = new Set(data.members.map(m=>m.id));
+  return [...new Set(Object.entries(profiles).filter(([id])=>ids.has(id)).map(([,p])=>normalizePhone(p.phone)).filter(Boolean))];
+}
+const IC = {
+  phone:'<svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>',
+  sms:'<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
+  wa:'<svg viewBox="0 0 24 24"><path d="M3 21l1.7-5A8.5 8.5 0 1112 20.5a8.4 8.4 0 01-4-1z"/><path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.6-2-1-1 .8a5 5 0 01-2.7-2.7l.8-1-1-2z"/></svg>',
+  mail:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>',
+  home:'<svg viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>',
+  cake:'<svg viewBox="0 0 24 24"><path d="M4 21h16v-8H4zM4 16c2 0 2-1.5 4-1.5s2 1.5 4 1.5 2-1.5 4-1.5 2 1.5 4 1.5M12 9v4M12 4.5a1.5 1.5 0 001.5-1.5c0-1-1.5-2-1.5-2s-1.5 1-1.5 2A1.5 1.5 0 0012 4.5z"/></svg>',
+  drop:'<svg viewBox="0 0 24 24"><path d="M12 2.7l5.7 5.7a8 8 0 11-11.3 0z"/></svg>',
+  music:'<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  camera:'<svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  edit:'<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>',
+  lock:'<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+  chev:'<svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>'
+};
 
-  const addFormHtml = admin ? `
+/* ---------------- MEMBERS ---------------- */
+function renderWanachama(){
+  if(memberDetailId){
+    const m = data.members.find(x=>x.id===memberDetailId);
+    if(m && isAdmin()) return renderMemberDetail(m);
+    memberDetailId = null;
+  }
+  const admin = isAdmin();
+  let members = data.members;
+  if(searchQuery) members = members.filter(m=>m.name.toLowerCase().includes(searchQuery));
+  const counts = { all: members.length, leaders: members.filter(m=>m.isLeader).length, admins: members.filter(m=>m.role==='admin').length };
+  if(memberFilter === 'leaders') members = members.filter(m=>m.isLeader);
+  else if(memberFilter === 'admins') members = members.filter(m=>m.role==='admin');
+  else if(['Soprano','Alto','Tenor','Bass'].includes(memberFilter)) members = members.filter(m=>m.voicePart===memberFilter);
+  members = sortMembers(members);
+
+  const chips = [['all',`All members`],['leaders','Leaders'],['admins','Admins'],['Soprano','Soprano'],['Alto','Alto'],['Tenor','Tenor'],['Bass','Bass']]
+    .map(([k,l])=>`<button class="chip ${memberFilter===k?'on':''}" data-mfilter="${k}">${l}</button>`).join('');
+  const sortOptions = [['name-asc','Name (A–Z)'],['name-desc','Name (Z–A)'],['joined-new','Newest'],['joined-old','Oldest'],['voice','Voice part']];
+
+  const cards = members.map(m=>{
+    const self = loggedInMember && loggedInMember.id === m.id;
+    const badge = m.role==='admin' ? '<span class="mbadge admin">Admin</span>' : m.isLeader ? '<span class="mbadge leader">Leader</span>' : '';
+    const tappable = admin || self;
+    return `
+      <div class="mcard ${tappable?'tap':''}" ${admin ? `data-open-member="${m.id}"` : self ? 'data-edit-own-profile' : ''}>
+        <div class="mcard-top">
+          ${avatarHtml(m, 46)}
+          <div class="mcard-id">
+            <div class="mcard-name">${escapeHtml(m.name)}${self ? ' <span class="you-chip">You</span>' : ''}</div>
+            <div class="mcard-pos">${escapeHtml(m.position || 'Choir Member')}</div>
+          </div>
+          ${badge}
+        </div>
+        <div class="mcard-grid">
+          <div><b>${escapeHtml(m.voicePart || '—')}</b><span>Voice part</span></div>
+          <div><b>${escapeHtml(m.gender || '—')}</b><span>Gender</span></div>
+          <div><b>${fmtJoined(m)}</b><span>Joined</span></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const addForm = admin && showAddMember ? `
     <div class="card">
-      <h2>Register a member manually</h2>
-      <p class="desc">For members without a device — administrators can add them directly.</p>
-      <div class="row"><input type="text" id="mem-name" placeholder="Full name" style="flex:1;min-width:150px;"></div>
-      <div class="row">
-        <select id="mem-gender"><option value="">Gender</option><option>Male</option><option>Female</option></select>
-        <select id="mem-voice"><option value="">Voice part</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select>
+      <h2>Register a member</h2>
+      <p class="desc">For members without a phone — they can sign in later with their name and choose a PIN.</p>
+      <div class="field"><label>Full name</label><div class="field-box"><input type="text" id="mem-name" placeholder="e.g. Neema Mollel"></div></div>
+      <div class="field-row">
+        <div class="field"><label>Gender</label><div class="field-box"><select id="mem-gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div></div>
+        <div class="field"><label>Voice part</label><div class="field-box"><select id="mem-voice"><option value="">Select</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select></div></div>
       </div>
-      <div class="row">
-        <select id="mem-position" style="flex:1;">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>
-        <select id="mem-role"><option value="member">Member access</option><option value="admin">Administrator access</option></select>
+      <div class="field-row">
+        <div class="field"><label>Position</label><div class="field-box"><select id="mem-position">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div></div>
+        <div class="field"><label>Access</label><div class="field-box"><select id="mem-role"><option value="member">Member</option><option value="admin">Administrator</option></select></div></div>
       </div>
-      <button class="btn" id="add-member">Add</button>
+      <div class="row"><button class="btn" id="add-member">Add member</button><button class="btn ghost" id="cancel-add-member">Cancel</button></div>
     </div>` : '';
 
   return `
-    ${sortControl}
-    ${addFormHtml}
-    <div class="card"><h2>Leaders (${leaders.length})</h2>${leaderHtml}</div>
-    <div class="card"><h2>Members (${regular.length})</h2>${memberHtml}</div>
+    <div class="mhead">
+      <div><h1 class="mtitle">All Members</h1><div class="msub">${counts.all} registered · ${counts.leaders} leader${counts.leaders===1?'':'s'}</div></div>
+      ${admin ? `<button class="fab" id="toggle-add-member" aria-label="Add member">${IC.plus}</button>` : ''}
+    </div>
+    <div class="chips">${chips}</div>
+    <div class="mtools">
+      <span>Sort</span>
+      <select id="member-sort">${sortOptions.map(([v,l])=>`<option value="${v}" ${memberSort===v?'selected':''}>${l}</option>`).join('')}</select>
+    </div>
+    ${addForm}
+    ${admin && !adminUnlocked ? unlockCardHtml() : ''}
+    ${cards || `<div class="card"><div class="empty">No members found.</div></div>`}
   `;
+}
+function unlockCardHtml(){
+  return `
+    <div class="card unlock-card">
+      <div class="unlock-ic">${IC.lock}</div>
+      <div style="flex:1;min-width:0;">
+        <h2 style="margin-bottom:4px;">Unlock member details</h2>
+        <p class="desc" style="margin-bottom:10px;">Phone numbers, birthdays and other private details are protected. Enter the admin passcode once on this phone to see them.</p>
+        <div class="row" style="margin:0;"><input type="password" id="unlock-pass" placeholder="Admin passcode" style="flex:1;min-width:0;"><button class="btn" id="unlock-btn">Unlock</button></div>
+      </div>
+    </div>`;
+}
+function infoRow(icon, label, value, sub){
+  return `<div class="drow"><div class="drow-ic">${icon}</div><div class="drow-txt"><span>${label}</span><b>${value || '<i>Not added</i>'}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
+}
+function renderMemberDetail(m){
+  const p = profiles[m.id] || {};
+  const phone = normalizePhone(p.phone);
+  const st = memberStats(m.id);
+  const self = loggedInMember.id === m.id;
+  const act = (href, icon, label, on)=> on
+    ? `<a class="dact" href="${href}" ${href.startsWith('http') ? 'target="_blank" rel="noopener"' : ''}>${icon}<span>${label}</span></a>`
+    : `<span class="dact off">${icon}<span>${label}</span></span>`;
+  const bapt = p.baptized === 'yes' ? 'Baptized' : p.baptized === 'no' ? 'Not baptized' : '';
+  return `
+    <div class="dhero">
+      <div class="dhero-bar">
+        <button class="auth-back" style="margin:0;" id="close-member-detail" aria-label="Back">${ICONS.back}</button>
+        <span>Details</span>
+        <button class="auth-back" style="margin:0;" data-edit-profile="${m.id}" aria-label="Edit">${IC.edit}</button>
+      </div>
+      ${avatarHtml(m, 92)}
+      <div class="dname">${escapeHtml(m.name)}</div>
+      <div class="dpos">${escapeHtml(m.position || 'Choir Member')}${m.role==='admin' ? ' · Administrator' : ''}</div>
+      <div class="dacts">
+        ${act('tel:'+phone, IC.phone, 'Call', adminUnlocked && phone)}
+        ${act(smsLink([phone],''), IC.sms, 'SMS', adminUnlocked && phone)}
+        ${act('https://wa.me/'+phone.replace('+',''), IC.wa, 'WhatsApp', adminUnlocked && phone)}
+        ${act('mailto:'+(p.email||''), IC.mail, 'Email', adminUnlocked && p.email)}
+      </div>
+    </div>
+    ${adminUnlocked ? `
+    <div class="card dcard">
+      ${infoRow(IC.phone, 'Phone number', escapeHtml(p.phone||''))}
+      ${infoRow(IC.mail, 'Email', escapeHtml(p.email||''))}
+      ${infoRow(IC.home, 'Residence', escapeHtml(p.residence||''))}
+      ${infoRow(IC.cake, 'Birth date', fmtLongDate(p.birthDate), p.birthDate ? `${ageFrom(p.birthDate)} years old` : '')}
+      ${infoRow(IC.drop, 'Baptism', bapt, p.baptized==='yes' && p.baptismDate ? 'on ' + fmtLongDate(p.baptismDate) : '')}
+    </div>` : unlockCardHtml()}
+    <div class="card dcard">
+      ${infoRow(IC.music, 'Voice part · Gender', `${escapeHtml(m.voicePart||'—')} · ${escapeHtml(m.gender||'—')}`)}
+      ${infoRow(IC.cal, 'Joined the choir', m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '')}
+    </div>
+    <div class="card">
+      <h2>Attendance</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="num">${st.present}</div><div class="lbl">On time</div></div>
+        <div class="stat"><div class="num">${st.late}</div><div class="lbl">Late</div></div>
+        <div class="stat"><div class="num">${st.absent}</div><div class="lbl">Absent</div></div>
+      </div>
+      <p class="desc" style="margin:10px 0 0;">Attendance rate: <b style="color:var(--text);">${st.pct}%</b> of ${st.total} session${st.total===1?'':'s'}.</p>
+    </div>
+    <div class="card">
+      <h2>Manage</h2>
+      <div class="dmanage">
+        <button class="btn ghost" data-edit-profile="${m.id}">Edit profile</button>
+        ${self ? '' : `<button class="btn ghost" data-toggle-role="${m.id}">${m.role==='admin' ? 'Make member' : 'Make admin'}</button>`}
+        ${self || !(m.pinHash || m.deviceId) ? '' : `<button class="btn ghost" data-reset-login="${m.id}">Reset login</button>`}
+        ${self ? '' : `<button class="btn danger" data-del-member="${m.id}">Remove</button>`}
+      </div>
+    </div>`;
+}
+
+/* ---------------- PROFILE EDIT ---------------- */
+function openProfileEditor(memberId){
+  profileReturnTab = currentTab === 'profile' ? profileReturnTab : currentTab;
+  profileEditId = memberId; pendingPhoto = undefined;
+  currentTab = 'profile'; window.scrollTo(0,0); render();
+}
+function renderProfileEdit(){
+  const m = data.members.find(x=>x.id===profileEditId);
+  if(!m){ currentTab = profileReturnTab || 'home'; return paintFallback(); }
+  const self = loggedInMember.id === m.id;
+  const p = profiles[m.id] || {};
+  const canPrivate = self || adminUnlocked;
+  const photo = pendingPhoto === undefined ? photos[m.id] : pendingPhoto;
+  const v = (k)=> escapeHtml(p[k] || '');
+  const sel = (id, opts, cur)=> `<select id="${id}"><option value="">Select</option>${opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('')}</select>`;
+  return `
+    <div class="phero">
+      <div class="dhero-bar">
+        <button class="auth-back" style="margin:0;" id="close-profile" aria-label="Back">${ICONS.back}</button>
+        <span>${self ? 'My profile' : 'Edit profile'}</span><span style="width:40px;"></span>
+      </div>
+      <div class="pphoto">
+        ${photo ? `<img src="${photo}" alt="">` : `<div class="pphoto-ph">${escapeHtml(m.name.trim().charAt(0).toUpperCase())}</div>`}
+        <label class="pcam" aria-label="Change photo">${IC.camera}<input type="file" id="pf-photo" accept="image/*" style="display:none;"></label>
+      </div>
+      ${photo ? `<button class="plink" id="pf-photo-remove">Remove photo</button>` : `<div class="plink" style="opacity:.8;">Tap the camera to add a photo</div>`}
+      <div class="dname">${escapeHtml(m.name)}</div>
+      <div class="dpos">${escapeHtml(m.position || 'Choir Member')}</div>
+    </div>
+    <div class="card">
+      <h2>Basic information</h2>
+      <div class="field"><label>Full name</label><div class="field-box"><input type="text" id="pf-name" value="${escapeHtml(m.name)}"></div></div>
+      <div class="field-row">
+        <div class="field"><label>Gender</label><div class="field-box">${sel('pf-gender',['Male','Female'],m.gender)}</div></div>
+        <div class="field"><label>Voice part</label><div class="field-box">${sel('pf-voice',['Soprano','Alto','Tenor','Bass'],m.voicePart)}</div></div>
+      </div>
+      ${isAdmin() ? `<div class="field"><label>Position</label><div class="field-box"><select id="pf-position">${POSITIONS.map(o=>`<option ${o===(m.position||'Choir Member')?'selected':''}>${o}</option>`).join('')}</select></div></div>` : ''}
+    </div>
+    ${canPrivate ? `
+    <div class="card">
+      <h2>Private details</h2>
+      <p class="desc">Only choir administrators can see these.</p>
+      <div class="field"><label>Birth date</label><div class="field-box"><input type="date" id="pf-birth" value="${v('birthDate')}"></div></div>
+      <div class="field"><label>Phone number</label><div class="field-box"><input type="tel" id="pf-phone" inputmode="tel" placeholder="e.g. 0712 345 678" value="${v('phone')}"></div></div>
+      <div class="field"><label>Email address</label><div class="field-box"><input type="email" id="pf-email" inputmode="email" placeholder="name@example.com" value="${v('email')}"></div></div>
+      <div class="field"><label>Residence</label><div class="field-box"><input type="text" id="pf-res" placeholder="e.g. Njiro, Arusha" value="${v('residence')}"></div></div>
+      <div class="field"><label>Baptized?</label>
+        <div class="seg" style="margin-bottom:0;">
+          <button type="button" data-bapt="yes" class="${p.baptized==='yes'?'active':''}">Yes</button>
+          <button type="button" data-bapt="no" class="${p.baptized==='no'?'active':''}">No</button>
+        </div>
+        <input type="hidden" id="pf-bapt" value="${v('baptized')}">
+      </div>
+      <div class="field" id="pf-bdate-row" style="${p.baptized==='yes'?'':'display:none;'}"><label>Baptism date</label><div class="field-box"><input type="date" id="pf-bdate" value="${v('baptismDate')}"></div></div>
+    </div>` : `<div class="card"><p class="desc" style="margin:0;">Unlock member details in the Members tab to edit private information.</p></div>`}
+    <button class="btn primary-glow auth-submit" id="save-profile" style="margin-bottom:20px;">Save profile</button>`;
+}
+function paintFallback(){ return renderHome(); }
+
+function attachV6Handlers(){
+  document.querySelectorAll('[data-mfilter]').forEach(b=>{ b.onclick = ()=>{ memberFilter = b.dataset.mfilter; render(true); }; });
+  const tAdd = document.getElementById('toggle-add-member'); if(tAdd) tAdd.onclick = ()=>{ showAddMember = !showAddMember; render(true); };
+  const cAdd = document.getElementById('cancel-add-member'); if(cAdd) cAdd.onclick = ()=>{ showAddMember = false; render(true); };
+  document.querySelectorAll('[data-open-member]').forEach(el=>{ el.onclick = ()=>{ memberDetailId = el.dataset.openMember; window.scrollTo(0,0); render(); }; });
+  document.querySelectorAll('[data-edit-own-profile]').forEach(el=>{ el.onclick = ()=> openProfileEditor(loggedInMember.id); });
+  document.querySelectorAll('[data-edit-profile]').forEach(el=>{ el.onclick = (e)=>{ e.stopPropagation(); openProfileEditor(el.dataset.editProfile); }; });
+  const closeD = document.getElementById('close-member-detail'); if(closeD) closeD.onclick = ()=>{ memberDetailId = null; render(); };
+  const myProf = document.getElementById('edit-my-profile'); if(myProf) myProf.onclick = ()=> openProfileEditor(loggedInMember.id);
+
+  const unlockBtn = document.getElementById('unlock-btn');
+  if(unlockBtn) unlockBtn.onclick = async ()=>{
+    const pass = document.getElementById('unlock-pass').value.trim();
+    if(!pass) return;
+    unlockBtn.disabled = true; unlockBtn.textContent = 'Checking…';
+    let ok = await claimAdmin(pass);
+    if(!ok){ // no passcode stored yet (first setup): this becomes the admin passcode
+      if(await createAdminSecret(pass)) ok = await claimAdmin(pass);
+    }
+    if(ok){ showToast('Member details unlocked'); await refreshPrivateAccess(); }
+    else { unlockBtn.disabled = false; unlockBtn.textContent = 'Unlock'; showAlertModal('That passcode is not correct.'); }
+  };
+
+  // profile editor
+  const closeP = document.getElementById('close-profile');
+  if(closeP) closeP.onclick = ()=>{ currentTab = profileReturnTab || 'home'; profileEditId = null; pendingPhoto = undefined; render(); };
+  document.querySelectorAll('[data-bapt]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('[data-bapt]').forEach(x=>x.classList.toggle('active', x===b));
+      document.getElementById('pf-bapt').value = b.dataset.bapt;
+      document.getElementById('pf-bdate-row').style.display = b.dataset.bapt === 'yes' ? '' : 'none';
+    };
+  });
+  const pfPhoto = document.getElementById('pf-photo');
+  if(pfPhoto) pfPhoto.onchange = async ()=>{
+    const f = pfPhoto.files && pfPhoto.files[0]; if(!f) return;
+    try{ pendingPhoto = await resizePhoto(f); keepFormAndRender(); }catch(e){ showAlertModal("That picture couldn't be opened. Try another one."); }
+  };
+  const pfRemove = document.getElementById('pf-photo-remove');
+  if(pfRemove) pfRemove.onclick = ()=>{ pendingPhoto = null; keepFormAndRender(); };
+  const saveP = document.getElementById('save-profile');
+  if(saveP) saveP.onclick = async ()=>{
+    const m = data.members.find(x=>x.id===profileEditId); if(!m) return;
+    const name = document.getElementById('pf-name').value.trim().replace(/\s+/g,' ');
+    if(!name){ document.getElementById('pf-name').focus(); return; }
+    if(data.members.some(x=>x.id!==m.id && normName(x.name)===normName(name))){ showAlertModal('Another member already uses that name.'); return; }
+    const email = document.getElementById('pf-email') ? document.getElementById('pf-email').value.trim() : '';
+    if(email && !/^\S+@\S+\.\S+$/.test(email)){ showAlertModal('Please check the email address.'); return; }
+    saveP.disabled = true; saveP.textContent = 'Saving…';
+    m.name = name;
+    m.gender = document.getElementById('pf-gender').value;
+    m.voicePart = document.getElementById('pf-voice').value;
+    const posEl = document.getElementById('pf-position');
+    if(posEl){ m.position = posEl.value; m.isLeader = posEl.value !== 'Choir Member'; }
+    saveData();
+    let failed = false;
+    try{
+      if(document.getElementById('pf-phone')){
+        const bapt = document.getElementById('pf-bapt').value;
+        await savePrivateProfile(m.id, {
+          birthDate: document.getElementById('pf-birth').value,
+          phone: document.getElementById('pf-phone').value.trim(),
+          email, residence: document.getElementById('pf-res').value.trim(),
+          baptized: bapt, baptismDate: bapt === 'yes' ? document.getElementById('pf-bdate').value : ''
+        });
+      }
+      if(pendingPhoto !== undefined) await savePhoto(m.id, pendingPhoto);
+    }catch(e){ console.error(e); failed = true; }
+    pendingPhoto = undefined;
+    if(failed){ saveP.disabled = false; saveP.textContent = 'Save profile'; showAlertModal("Some details couldn't be saved. Check your internet connection and try again. If it keeps failing, ask an administrator to reset your login."); return; }
+    showToast('Profile saved');
+    currentTab = profileReturnTab || 'home'; profileEditId = null; render();
+  };
+
+  // announcements: text members
+  document.querySelectorAll('[data-text-ann]').forEach(b=>{
+    b.onclick = ()=>{
+      const a = data.announcements.find(x=>x.id===b.dataset.textAnn); if(!a) return;
+      const nums = memberPhones();
+      if(!adminUnlocked){ showAlertModal('Unlock member details in the Members tab first, so the app can see phone numbers.'); return; }
+      if(!nums.length){ showAlertModal('No members have added a phone number yet.'); return; }
+      window.location.href = smsLink(nums, `AIC Arusha Choir: ${a.title}\n${a.message}`);
+    };
+  });
+  const smsAuto = document.getElementById('sms-auto-toggle');
+  if(smsAuto) smsAuto.onchange = ()=>{ data.settings = { ...(data.settings||{}), smsAuto: smsAuto.checked }; saveData(); render(true); };
+
+  // attendance settings & controls
+  const lateSave = document.getElementById('late-after-save');
+  if(lateSave) lateSave.onclick = ()=>{
+    const v = parseInt(document.getElementById('late-after').value, 10);
+    if(!(v >= 0 && v <= 240)){ showAlertModal('Enter a number of minutes between 0 and 240.'); return; }
+    data.settings = { ...(data.settings||{}), lateAfter: v }; saveData(); showToast(`Late after ${v} minutes`); render(true);
+  };
+  const endS = document.getElementById('end-session');
+  if(endS) endS.onclick = ()=>{
+    const s = data.sessions.find(x=>x.id===activeSessionId); if(!s) return;
+    showConfirmModal(`End check-in for "${s.title}"? Everyone who hasn't checked in will be marked absent.`, ()=>{
+      s.closedAt = new Date().toISOString(); ensureScheduledSessions(); saveData(); render(true);
+    });
+  };
+}
+/* re-render but keep what the person already typed in the profile form */
+function keepFormAndRender(){
+  const ids = ['pf-name','pf-gender','pf-voice','pf-position','pf-birth','pf-phone','pf-email','pf-res','pf-bapt','pf-bdate'];
+  const vals = {}; ids.forEach(id=>{ const el = document.getElementById(id); if(el) vals[id] = el.value; });
+  render(true);
+  ids.forEach(id=>{ const el = document.getElementById(id); if(el && vals[id] !== undefined) el.value = vals[id]; });
+  const b = vals['pf-bapt'];
+  document.querySelectorAll('[data-bapt]').forEach(x=>x.classList.toggle('active', x.dataset.bapt===b));
+  const row = document.getElementById('pf-bdate-row'); if(row) row.style.display = b==='yes' ? '' : 'none';
 }
 
 /* ---------------- ATTENDANCE ---------------- */
@@ -1496,29 +2044,62 @@ function renderMahudhurio(){
   return mainHtml;
 }
 
+function sessionCounts(session){
+  const recs = Object.values(session.records||{});
+  const present = recs.filter(r=>r.status==='present').length;
+  const late = recs.filter(r=>r.status==='late').length;
+  const eligible = data.members.filter(m=>memberJoinedBy(m, session.date)).length;
+  const absent = session.finalized ? recs.filter(r=>r.status==='absent').length : Math.max(0, eligible - present - late);
+  return { present, late, absent };
+}
+function nextScheduledToday(){
+  const today = todayStr(), now = Date.now();
+  return data.schedule
+    .filter(ev=>ev.time && scheduleOccursOn(ev, today))
+    .map(ev=>({ ev, st: new Date(today+'T'+ev.time+':00').getTime() }))
+    .filter(x=>x.st + CHECKIN_CLOSES_AFTER*60000 > now)
+    .filter(x=>!data.sessions.some(s=>s.scheduleId===x.ev.id && s.date===today))
+    .sort((a,b)=>a.st-b.st)[0] || null;
+}
+function sessionStatusChip(s){
+  const st = sessionState(s), start = sessionStartMs(s);
+  if(st === 'open'){
+    const lateAt = start + lateAfterMin()*60000;
+    const closeAt = s.closedAt ? Date.now() : start + CHECKIN_CLOSES_AFTER*60000;
+    const phase = Date.now() < lateAt ? `On time until ${hhmm(lateAt)}` : `Late check-ins until ${hhmm(closeAt)}`;
+    return `<span class="live-chip"><i></i>Check-in open · ${phase}</span>`;
+  }
+  if(st === 'upcoming') return `<span class="live-chip wait">Opens at ${hhmm(start - CHECKIN_OPENS_BEFORE*60000)}</span>`;
+  return `<span class="live-chip closed">Check-in closed</span>`;
+}
+
 function renderMemberAttendance(today, todaysSessions){
-  let rows = '';
-  if(todaysSessions.length){
-    rows = todaysSessions.map(s=>{
-      const rec = s.records[loggedInMember.id];
-      const statusHtml = rec
-        ? `<div class="stamp ${rec.status} on" style="cursor:default;">${labelFor(rec.status)}${rec.time ? ' · ' + rec.time : ''}</div>`
-        : `<span style="font-size:12px;color:var(--text-soft);">Not checked in</span>`;
-      return `
-        <div class="list-item">
-          <div><div class="li-main">${s.title}</div><div class="li-sub">${fmtDate(s.date)} · Starts ${s.startTime || '—'}</div></div>
-          ${statusHtml}
-        </div>`;
-    }).join('');
-  } else {
-    rows = `<div class="empty">No attendance session scheduled for today yet.<i>Check back once an administrator starts one.</i></div>`;
+  const rows = todaysSessions.length ? todaysSessions.map(s=>{
+    const rec = (s.records||{})[loggedInMember.id];
+    const statusHtml = rec
+      ? `<div class="stamp ${rec.status} on" style="cursor:default;">${labelFor(rec.status)}${rec.time ? ' · ' + rec.time : ''}</div>`
+      : `<span style="font-size:12px;color:var(--text-soft);">Not checked in</span>`;
+    return `
+      <div class="list-item">
+        <div style="min-width:0;"><div class="li-main">${escapeHtml(s.title)}</div><div class="li-sub">Starts ${s.startTime || '—'}</div><div style="margin-top:6px;">${sessionStatusChip(s)}</div></div>
+        ${statusHtml}
+      </div>`;
+  }).join('') : '';
+
+  const openSessions = todaysSessions.filter(s=>sessionState(s)==='open' && !(s.records||{})[loggedInMember.id]);
+  const next = nextScheduledToday();
+  let emptyMsg = '';
+  if(!todaysSessions.length){
+    emptyMsg = next
+      ? `<div class="empty">Next: ${escapeHtml(next.ev.title)} at ${next.ev.time}.<i>Check-in opens at ${hhmm(next.st - CHECKIN_OPENS_BEFORE*60000)}.</i></div>`
+      : `<div class="empty">Nothing scheduled for today.<i>Check-in appears here automatically when a rehearsal or service is about to start.</i></div>`;
   }
 
-  const scanSection = todaysSessions.length ? `
+  const scanSection = openSessions.length ? `
     <div class="card">
       <h2>Check in</h2>
-      <p class="desc">Scan the QR code shown by your leader, or enter the code below. Arriving more than 30 minutes after the start time is recorded as late.</p>
-      ${!scannerOpen ? `<button class="btn" id="open-scanner">Scan QR to check in</button>` : `
+      <p class="desc">Scan the QR code shown by your leader, or type the code. Checking in more than ${lateAfterMin()} minutes after the start time is recorded as late.</p>
+      ${!scannerOpen ? `<button class="btn primary-glow auth-submit" id="open-scanner" style="margin-top:0;">Scan QR to check in</button>` : `
         <div class="scan-video-wrap">
           <video id="scan-video" playsinline autoplay muted></video>
           <div class="scan-frame"></div>
@@ -1527,113 +2108,124 @@ function renderMemberAttendance(today, todaysSessions){
         <div class="row" style="margin-top:10px;"><button class="btn ghost" id="close-scanner">Cancel scanning</button></div>
       `}
       <div class="row" style="margin-top:12px;">
-        <input type="text" id="manual-code" placeholder="Or type the 6-character code" style="flex:1;text-transform:uppercase;">
+        <input type="text" id="manual-code" placeholder="Or type the 6-character code" style="flex:1;min-width:0;text-transform:uppercase;">
         <button class="btn ghost" id="manual-checkin">Check in</button>
       </div>
-      ${scanMessage ? `<div class="scan-msg ${scanMessage.startsWith('✓') ? 'ok' : 'err'}">${scanMessage}</div>` : ''}
-    </div>
-  ` : '';
+    </div>` : '';
 
   return `
-    <div class="card">
-      <h2>My attendance</h2>
-      <p class="desc">Today's session status.</p>
-      ${rows}
-    </div>
+    ${scanMessage ? `<div class="scan-msg ${scanMessage.startsWith('✓') ? 'ok' : 'err'}" style="margin-bottom:14px;">${scanMessage}</div>` : ''}
     ${scanSection}
-  `;
+    <div class="card">
+      <h2>Today's attendance</h2>
+      ${rows || emptyMsg}
+    </div>`;
 }
 
 function renderAdminAttendance(today, todaysSessions){
-  const scheduleOptions = data.schedule.map(ev=>`<option value="${ev.id}" data-time="${ev.time}">${ev.title} — ${ev.day} ${ev.time}</option>`).join('');
   let session = activeSessionId ? data.sessions.find(s=>s.id===activeSessionId) : null;
-  if(!session && todaysSessions.length){ session = todaysSessions[todaysSessions.length-1]; activeSessionId = session.id; }
+  if(!session && todaysSessions.length){
+    session = todaysSessions.find(s=>sessionState(s)==='open') || todaysSessions[todaysSessions.length-1];
+    activeSessionId = session.id;
+  }
+  const scheduleOptions = data.schedule.map(ev=>`<option value="${ev.id}" data-time="${ev.time}">${escapeHtml(ev.title)} — ${ev.date ? fmtDateShort(ev.date) : ev.day} ${ev.time}</option>`).join('');
+  const next = nextScheduledToday();
 
-  let qrCard = '';
-  let rollcard = '';
-
+  let qrCard = '', rollcard = '';
   if(session){
-    const presentCount = Object.values(session.records).filter(r=>r.status==='present').length;
-    const lateCount = Object.values(session.records).filter(r=>r.status==='late').length;
-    const absentCount = data.members.length - presentCount - lateCount;
-    const recentCheckins = Object.entries(session.records)
+    const state = sessionState(session);
+    const c = sessionCounts(session);
+    const feed = Object.entries(session.records||{})
       .map(([mid, rec])=>({ member: data.members.find(m=>m.id===mid), rec }))
-      .filter(x=>x.member)
+      .filter(x=>x.member && x.rec.status !== 'absent')
       .sort((a,b)=> (b.rec.time||'').localeCompare(a.rec.time||''));
-
     qrCard = `
       <div class="card">
-        <h2>${session.title}</h2>
-        <p class="desc">${fmtDate(session.date)} · Starts ${session.startTime || '—'} · Members scan this to check in</p>
-        <div class="qr-wrap">
-          <div id="qr-box"></div>
-          <div class="qr-code-text">${session.checkinCode}</div>
-          <div class="qr-caption">Show this screen, or share the code, so members can check in.</div>
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="min-width:0;"><h2 style="margin-bottom:4px;">${escapeHtml(session.title)}</h2>
+          <p class="desc" style="margin:0;">${fmtDate(session.date)} · Starts ${session.startTime || '—'}</p></div>
         </div>
-        <div class="row" style="margin-top:12px;">
-          <button class="btn ghost" id="regen-code">Regenerate code</button>
-          <button class="btn ghost" id="refresh-checkins">Refresh</button>
-        </div>
+        <div style="margin:10px 0 4px;">${sessionStatusChip(session)}</div>
+        ${state === 'open' ? `
+          <div class="qr-wrap">
+            <div id="qr-box"></div>
+            <div class="qr-code-text">${session.checkinCode}</div>
+            <div class="qr-caption">Show this screen so members can scan it, or read out the code.</div>
+          </div>
+          <div class="row" style="margin-top:12px;">
+            <button class="btn ghost" id="regen-code">New code</button>
+            <button class="btn danger" id="end-session">End check-in</button>
+          </div>` : state === 'upcoming' ? `
+          <p class="desc" style="margin-top:10px;">The QR code will appear here automatically when check-in opens.</p>` : ''}
         <div class="stat-grid" style="margin-top:14px;">
-          <div class="stat"><div class="num">${presentCount}</div><div class="lbl">On time</div></div>
-          <div class="stat"><div class="num">${lateCount}</div><div class="lbl">Late</div></div>
-          <div class="stat"><div class="num">${absentCount}</div><div class="lbl">Absent</div></div>
+          <div class="stat"><div class="num">${c.present}</div><div class="lbl">On time</div></div>
+          <div class="stat"><div class="num">${c.late}</div><div class="lbl">Late</div></div>
+          <div class="stat"><div class="num">${c.absent}</div><div class="lbl">${session.finalized ? 'Absent' : 'Not yet in'}</div></div>
         </div>
-        ${recentCheckins.length ? `
+        ${feed.length ? `
           <div class="checkin-feed">
             <p class="desc" style="margin-bottom:6px;">Live check-ins</p>
-            ${recentCheckins.map(x=>`<div class="cf-row"><span>${x.member.name}</span><span style="color:${x.rec.status==='late' ? 'var(--late)' : 'var(--present)'};font-weight:700;">${labelFor(x.rec.status)} · ${x.rec.time}</span></div>`).join('')}
-          </div>` : `<p class="desc" style="margin-top:12px;margin-bottom:0;">No check-ins recorded yet — this list updates automatically.</p>`}
+            ${feed.map(x=>`<div class="cf-row"><span>${escapeHtml(x.member.name)}</span><span style="color:${x.rec.status==='late' ? 'var(--late)' : 'var(--present)'};font-weight:700;white-space:nowrap;">${labelFor(x.rec.status)} · ${x.rec.time}</span></div>`).join('')}
+          </div>` : `<p class="desc" style="margin-top:12px;margin-bottom:0;">No check-ins yet — this list updates by itself.</p>`}
       </div>`;
 
-    const rows = data.members.map(m=>{
-      const rec = session.records[m.id] || {};
-      const status = rec.status || null;
-      const time = rec.time || '';
+    const rows = data.members.filter(m=>memberJoinedBy(m, session.date)).map(m=>{
+      const rec = (session.records||{})[m.id] || {};
       return `
         <div class="roll-row">
-          <div><div class="roll-name">${m.name}</div><div class="roll-voice">${m.voicePart || ''}</div></div>
+          <div style="min-width:0;"><div class="roll-name">${escapeHtml(m.name)}</div><div class="roll-voice">${m.voicePart || ''}</div></div>
           <div class="status-btns">
-            <button class="stamp present ${status==='present'?'on':''}" data-mark="${m.id}" data-status="present">On time</button>
-            <button class="stamp late ${status==='late'?'on':''}" data-mark="${m.id}" data-status="late">Late</button>
-            <button class="stamp absent ${status==='absent'?'on':''}" data-mark="${m.id}" data-status="absent">Absent</button>
-            <span class="time-badge">${time}</span>
+            <button class="stamp present ${rec.status==='present'?'on':''}" data-mark="${m.id}" data-status="present">On time</button>
+            <button class="stamp late ${rec.status==='late'?'on':''}" data-mark="${m.id}" data-status="late">Late</button>
+            <button class="stamp absent ${rec.status==='absent'?'on':''}" data-mark="${m.id}" data-status="absent">Absent</button>
+            <span class="time-badge">${rec.time || ''}</span>
           </div>
         </div>`;
     }).join('');
     rollcard = `
       <div class="card">
-        <h2>Manual overrides</h2>
-        <p class="desc">For members without a phone — mark them directly.</p>
-        ${data.members.length ? rows : `<div class="empty">No members yet.</div>`}
+        <h2>Mark members manually</h2>
+        <p class="desc">For members without a phone, or to correct a record.</p>
+        ${rows || `<div class="empty">No members yet.</div>`}
       </div>`;
   }
 
-  return `
+  const nextCard = !todaysSessions.some(s=>sessionState(s)==='open') ? `
     <div class="card">
-      <h2>Start an attendance session</h2>
-      <p class="desc">Starting a session generates a fresh check-in code and QR for members to scan.</p>
+      <h2>How check-in works</h2>
+      <p class="desc" style="margin-bottom:0;">${next
+        ? `Next today: <b style="color:var(--text);">${escapeHtml(next.ev.title)}</b> at ${next.ev.time}. Its QR code appears here automatically at ${hhmm(next.st - CHECKIN_OPENS_BEFORE*60000)}.`
+        : `Each rehearsal or service in the Schedule gets its own QR code automatically, ${CHECKIN_OPENS_BEFORE} minutes before it starts.`}
+        Members are on time up to ${lateAfterMin()} minutes after the start, late after that, and anyone who hasn't checked in ${CHECKIN_CLOSES_AFTER/60} hours after the start is marked absent.</p>
+    </div>` : '';
+
+  return `
+    ${todaysSessions.length > 1 ? `<div class="chips" style="margin-bottom:12px;">${todaysSessions.map(s=>`<button class="chip ${s.id===activeSessionId?'on':''}" data-open-session="${s.id}">${escapeHtml(s.title)}</button>`).join('')}</div>` : ''}
+    ${qrCard}
+    ${nextCard}
+    ${rollcard}
+    <div class="card">
+      <h2>Late rule</h2>
+      <p class="desc">Members who check in more than this many minutes after the start time are marked late.</p>
+      <div class="row" style="margin:0;align-items:center;">
+        <input type="number" id="late-after" min="0" max="240" value="${lateAfterMin()}" style="width:90px;">
+        <span style="color:var(--text-soft);font-size:13px;flex:1;">minutes</span>
+        <button class="btn ghost" id="late-after-save">Save</button>
+      </div>
+    </div>
+    <details class="card extra-session">
+      <summary><h2 style="display:inline;">Start an extra session</h2></summary>
+      <p class="desc" style="margin-top:8px;">For something that isn't in the schedule.</p>
       <div class="row">
         <input type="date" id="sess-date" value="${today}">
-        <select id="sess-schedule" style="flex:1;min-width:160px;">
-          <option value="">— Choose a schedule item —</option>
-          ${scheduleOptions}
-        </select>
+        <select id="sess-schedule" style="flex:1;min-width:160px;"><option value="">— From the schedule —</option>${scheduleOptions}</select>
       </div>
       <div class="row">
         <input type="text" id="sess-title" placeholder="Or type an event name" style="flex:1;min-width:130px;">
-        <input type="time" id="sess-start-time" value="17:00">
+        <input type="time" id="sess-start-time" value="${nowTime()}">
       </div>
       <button class="btn" id="start-session">Start session</button>
-      ${todaysSessions.length ? `
-        <div class="row" style="margin-top:10px;">
-          <span style="font-size:12px;color:var(--text-soft);">Today's sessions:</span>
-          ${todaysSessions.map(s=>`<button class="btn ghost small ${s.id===activeSessionId?'active':''}" data-open-session="${s.id}">${s.title}</button>`).join('')}
-        </div>` : ''}
-    </div>
-    ${qrCard}
-    ${rollcard}
-  `;
+    </details>`;
 }
 
 /* ---------------- REPORTS ---------------- */
@@ -2015,18 +2607,12 @@ function generateQrIfNeeded(){
   const box = document.getElementById('qr-box');
   if(!box) return;
   const session = activeSessionId ? data.sessions.find(s=>s.id===activeSessionId) : null;
-  if(!session) return;
+  if(!session || sessionState(session) !== 'open') return;
   box.innerHTML = '';
   try{
     qrInstance = new QRCode(box, { text: session.checkinCode, width:180, height:180, colorDark:"#1A1A1A", colorLight:"#ffffff" });
   }catch(e){ box.textContent = session.checkinCode; }
 
-  if(!qrPollId){
-    qrPollId = setInterval(async ()=>{
-      await reloadSharedData();
-      if(currentTab === 'mahudhurio' && isAdmin()) render();
-    }, 6000);
-  }
 }
 
 async function startScanner(){
@@ -2069,27 +2655,29 @@ function scanTick(){
 }
 async function processCheckinCode(codeRaw){
   await reloadSharedData();
+  ensureScheduledSessions();
   const code = codeRaw.trim().toUpperCase();
   const today = todayStr();
   const session = data.sessions.find(s=>s.date===today && s.checkinCode === code);
-  if(!session){
-    scanMessage = "Code not recognized or expired. Ask your leader for the current code.";
-    render();
-    return;
-  }
-  const startDT = new Date(session.date + 'T' + (session.startTime || '00:00') + ':00');
-  const now = new Date();
-  const diffMin = (now - startDT) / 60000;
-  const status = diffMin <= 30 ? 'present' : 'late';
+  if(!session){ scanMessage = "Code not recognized. Ask your leader for today's code."; render(true); return; }
+  const state = sessionState(session);
+  if(state === 'upcoming'){ scanMessage = `Check-in for ${session.title} opens at ${hhmm(sessionStartMs(session) - CHECKIN_OPENS_BEFORE*60000)}.`; render(true); return; }
+  if(state === 'closed'){ scanMessage = `Check-in for ${session.title} has closed.`; render(true); return; }
+  const existing = (session.records||{})[loggedInMember.id];
+  if(existing && existing.status !== 'absent'){ scanMessage = `✓ You're already checked in — ${labelFor(existing.status)} at ${existing.time}`; render(true); return; }
+  const diffMin = (Date.now() - sessionStartMs(session)) / 60000;
+  const status = diffMin <= lateAfterMin() ? 'present' : 'late';
+  session.records = session.records || {};
   session.records[loggedInMember.id] = { status, time: nowTime(), self: true };
   await saveData();
-  scanMessage = `✓ Checked in — ${labelFor(status)}`;
-  render();
+  scanMessage = `✓ Checked in to ${session.title} — ${labelFor(status)}`;
+  render(true);
 }
 
 /* ---------------- HANDLERS ---------------- */
 function attachHandlers(){
   attachAuthHandlers();
+  attachV6Handlers();
   document.querySelectorAll('[data-view-mode]').forEach(b=>{
     b.onclick = ()=>{ memberView = b.dataset.viewMode === 'member'; lsSet(MEMBER_VIEW_KEY, memberView ? '1' : null); render(true); };
   });
@@ -2114,7 +2702,9 @@ function attachHandlers(){
     const title = document.getElementById('ann-title').value.trim();
     const message = document.getElementById('ann-msg').value.trim();
     if(!title || !message){ document.getElementById('ann-title').focus(); return; }
-    data.announcements.push({ id: uid(), title, message, date: todayStr() });
+    const smsBox = document.getElementById('ann-sms');
+    data.announcements.push({ id: uid(), title, message, date: todayStr(), postedAt: new Date().toISOString(), sms: !!(smsBox && smsBox.checked) });
+    if(smsBox && smsBox.checked) showToast('Posted — SMS is being sent to members');
     saveData(); render();
   };
   document.querySelectorAll('[data-del-announcement]').forEach(b=>{
@@ -2211,13 +2801,18 @@ function attachHandlers(){
       isLeader: position !== 'Choir Member',
       joinedAt: new Date().toISOString()
     });
-    saveData(); render();
+    showAddMember = false;
+    saveData(); render(true); showToast(name + ' added');
   };
   document.querySelectorAll('[data-reset-login]').forEach(b=>{
     b.onclick = ()=>{
       const m = data.members.find(x=>x.id===b.dataset.resetLogin); if(!m) return;
       showConfirmModal(`Reset ${m.name}'s login? Their PIN and registered phone will be cleared, so they can sign in again on any phone and choose a new PIN.`, ()=>{
         delete m.pinHash; delete m.deviceId; saveData(); render(true); showToast('Login reset for ' + m.name);
+        if(canUseCloud()){
+          fsDb.collection('profiles').doc(m.id).set({ ownerUid: null }, { merge:true }).catch(()=>{});
+          if(photos[m.id]) fsDb.collection('photos').doc(m.id).set({ ownerUid: null }, { merge:true }).catch(()=>{});
+        }
       });
     };
   });
@@ -2226,7 +2821,12 @@ function attachHandlers(){
       const m = data.members.find(x=>x.id===b.dataset.delMember); if(!m) return;
       showConfirmModal(`Remove ${m.name} from the choir? This can't be undone.`, ()=>{
         data.members = data.members.filter(x=>x.id!==m.id);
+        memberDetailId = null;
         saveData(); render(true); showToast(m.name + ' removed');
+        if(canUseCloud()){
+          fsDb.collection('profiles').doc(m.id).delete().catch(()=>{});
+          fsDb.collection('photos').doc(m.id).delete().catch(()=>{});
+        }
       });
     };
   });
