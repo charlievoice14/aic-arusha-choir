@@ -6,7 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AIC Choir">
-<meta name="theme-color" content="#1F2A4A">
+<meta name="theme-color" content="#0D1830">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>AIC Arusha Choir</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3430,6 +3432,11 @@ document.addEventListener('touchmove', e=>{ if(e.touches.length>1) e.preventDefa
   if(!navigator.onLine) show();
   else if(!window.firebase) check().then(ok=>{ if(!ok) show(); });
 })();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol === 'https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
