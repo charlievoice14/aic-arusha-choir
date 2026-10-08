@@ -322,6 +322,15 @@ input,textarea,select{ font-size:16px !important; }
   .rep-hside b{color:var(--text);font-size:15px;}
   .icon-del{width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;}
   .icon-del svg{width:15px;height:15px;fill:none;stroke:var(--absent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+
+  .motto{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 12px;margin-top:14px;font-size:12.5px;font-weight:700;color:var(--primary);letter-spacing:.02em;}
+  .motto span{white-space:nowrap;}
+  .welcome-card{position:relative;overflow:hidden;background:linear-gradient(150deg,var(--card2),var(--card));border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px;}
+  .welcome-card::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:var(--primary-soft);right:-70px;top:-90px;}
+  .welcome-card > *{position:relative;z-index:1;}
+  .welcome-card h2{font-family:'Fraunces',serif;font-size:20px;margin:0 0 6px;color:var(--text);}
+  .welcome-card p{margin:0;color:var(--text-soft);font-size:13.5px;line-height:1.55;}
+  .welcome-card .motto{justify-content:flex-start;margin-top:12px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -1538,7 +1547,7 @@ function renderRatiba(){
   const today = todayStr();
   const weekly = data.schedule.filter(e=>!e.date).sort((a,b)=> DAYS.indexOf(a.day)-DAYS.indexOf(b.day) || (a.time||'').localeCompare(b.time||''));
   const upcoming = data.schedule.filter(e=>e.date && e.date >= today).sort((a,b)=> (a.date+a.time).localeCompare(b.date+b.time));
-  const past = data.schedule.filter(e=>e.date && e.date < today).sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
+  const past = pastEntries();
   const admin = isAdmin();
   const section = (title, desc, list, empty)=> `
     <div class="card">
@@ -1550,8 +1559,61 @@ function renderRatiba(){
     ${scheduleFormHtml()}
     ${section('Weekly schedule', admin ? 'Repeats every week. Each one gets its own QR check-in automatically.' : 'Rehearsals and services that happen every week.', weekly, 'No weekly items yet.')}
     ${section('Upcoming dates', 'Rehearsals and services on a specific date.', upcoming, 'Nothing planned on a specific date.')}
-    ${past.length ? section('Past', admin ? 'Delete a past item to remove it together with its attendance records.' : '', past, '') : ''}
+    ${past.length ? `
+    <div class="card">
+      <h2>Done</h2>
+      <p class="desc">${admin ? 'Rehearsals and services that have already happened. Delete one to remove it together with its attendance.' : 'Rehearsals and services that have already happened.'}</p>
+      ${past.slice(0, showAllPast ? past.length : 8).map(pastRow).join('')}
+      ${past.length > 8 ? `<button class="btn ghost" id="toggle-past" style="width:100%;justify-content:center;display:flex;margin-top:10px;">${showAllPast ? 'Show less' : `Show all ${past.length}`}</button>` : ''}
+    </div>` : ''}
   `;
+}
+
+let showAllPast = false;
+/* Everything that has already happened: finished attendance sessions, plus dated items that had none. */
+function pastEntries(){
+  const today = todayStr();
+  const out = [];
+  data.sessions.forEach(s=>{
+    if(s.date < today || (s.date === today && sessionState(s) === 'closed')) out.push({ kind:'session', s, date: s.date, time: s.startTime || '' });
+  });
+  data.schedule.forEach(ev=>{
+    if(ev.date && ev.date < today && !data.sessions.some(s=>s.scheduleId===ev.id)) out.push({ kind:'item', ev, date: ev.date, time: ev.time || '' });
+  });
+  return out.sort((a,b)=> (b.date+b.time).localeCompare(a.date+a.time));
+}
+function pastRow(x){
+  const admin = isAdmin();
+  const d = new Date(x.date+'T00:00:00');
+  let title, meta, delAttr;
+  if(x.kind === 'session'){
+    const ev = data.schedule.find(e=>e.id===x.s.scheduleId);
+    const r = sessionRate(x.s, data.members);
+    title = x.s.title; delAttr = `data-del-past-session="${x.s.id}"`;
+    meta = `${fmtDayDate(x.date)} · ${x.time || '—'}${ev && !ev.date ? ' · weekly' : ''}<div class="rep-hcounts"><span class="c-on">${r.present} on time</span><span class="c-late">${r.late} late</span><span class="c-abs">${r.absent} absent</span></div>`;
+  } else {
+    title = x.ev.title; delAttr = `data-del-past-item="${x.ev.id}"`;
+    meta = `${fmtDayDate(x.date)} · ${x.time || '—'} · no attendance recorded`;
+  }
+  return `
+    <div class="sch-row">
+      <div class="sch-date"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-GB',{month:'short'})}</span></div>
+      <div class="sch-main">
+        <div class="sch-title" style="margin-top:0;">${escapeHtml(title)}</div>
+        <div class="sch-meta">${meta}</div>
+      </div>
+      ${admin ? `<button class="icon-del" ${delAttr} aria-label="Delete" style="align-self:center;">${IC.trash}</button>` : ''}
+    </div>`;
+}
+function deletePastSession(s){
+  const ev = data.schedule.find(e=>e.id===s.scheduleId);
+  const oneOff = ev && ev.date && ev.date < todayStr();
+  showConfirmModal(`Delete "${escapeHtml(s.title)}" on ${fmtDayDate(s.date)} and all its attendance records? This can't be undone.`, ()=>{
+    data.sessions = data.sessions.filter(x=>x.id!==s.id);
+    if(oneOff && !data.sessions.some(x=>x.scheduleId===ev.id)) data.schedule = data.schedule.filter(e=>e.id!==ev.id);
+    if(activeSessionId === s.id) activeSessionId = null;
+    saveData(); render(true); showToast('Deleted with its attendance');
+  });
 }
 function deleteScheduleItem(ev){
   const sess = schedSessions(ev.id);
@@ -1721,6 +1783,9 @@ function renderRipoti(){
     </div>`;
 }
 function attachV7Handlers(){
+  const tp = document.getElementById('toggle-past'); if(tp) tp.onclick = ()=>{ showAllPast = !showAllPast; render(true); };
+  document.querySelectorAll('[data-del-past-session]').forEach(b=>{ b.onclick = ()=>{ const s = data.sessions.find(x=>x.id===b.dataset.delPastSession); if(s) deletePastSession(s); }; });
+  document.querySelectorAll('[data-del-past-item]').forEach(b=>{ b.onclick = ()=>{ const ev = data.schedule.find(x=>x.id===b.dataset.delPastItem); if(ev) deleteScheduleItem(ev); }; });
   const rp = document.getElementById('rep-period'); if(rp) rp.onchange = ()=>{ reportPeriod = rp.value; reportChartIdx = null; render(true); };
   const rv = document.getElementById('rep-voice'); if(rv) rv.onchange = ()=>{ reportVoice = rv.value; render(true); };
   document.querySelectorAll('[data-rc-idx]').forEach(el=>{
