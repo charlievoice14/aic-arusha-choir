@@ -333,6 +333,16 @@ input,textarea,select{ font-size:16px !important; }
   .welcome-card h2{font-family:'Fraunces',serif;font-size:20px;margin:0 0 6px;color:var(--text);}
   .welcome-card p{margin:0;color:var(--text-soft);font-size:13.5px;line-height:1.55;}
   .welcome-card .motto{justify-content:flex-start;margin-top:12px;}
+
+  .media-frame{width:100%;margin-top:8px;border-radius:12px;overflow:hidden;background:var(--card2);}
+  .media-frame iframe{width:100%;height:100%;border:0;display:block;}
+  .media-open{display:inline-flex;margin-top:8px;text-decoration:none;}
+  a.media-open{font-family:'Inter',sans-serif;font-weight:700;font-size:12.5px;padding:7px 12px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--primary);align-items:center;}
+  .media-link{display:flex;align-items:center;gap:12px;margin-top:8px;padding:12px;border-radius:12px;background:var(--card2);border:1px solid var(--border);}
+  .media-link > svg{width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--primary);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .media-link b{display:block;color:var(--text);font-size:14px;} .media-link span{display:block;font-size:12px;color:var(--text-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .media-link .media-open{margin-top:0;flex-shrink:0;}
+  .song-body audio{width:100%;margin-top:8px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -2553,6 +2563,43 @@ function renderAdminAttendance(today, todaysSessions){
 
 /* ---------------- REPORTS ---------------- */
 /* ---------------- SONGS ---------------- */
+
+/* ---------- song links: YouTube, Google Drive, Spotify, SoundCloud, Audiomack, direct audio ---------- */
+function cleanLink(raw){
+  let u = String(raw||'').trim();
+  if(!u) return '';
+  const m = u.match(/https?:\/\/\S+/i); if(m) u = m[0];          // pasted with extra text (e.g. from WhatsApp)
+  if(!/^https?:\/\//i.test(u)) u = 'https://' + u.replace(/^\/+/, '');
+  return u.replace(/[)\].,]+$/,'');
+}
+function mediaEmbed(raw){
+  const url = cleanLink(raw);
+  let u; try{ u = new URL(url); }catch(e){ return `<p class="desc" style="margin:8px 0 0;">This link doesn't look right. Edit the song to fix it.</p>`; }
+  const host = u.hostname.replace(/^www\.|^m\./,'');
+  const safe = escapeHtml(url);
+  const open = (label)=> `<a class="btn ghost small media-open" href="${safe}" target="_blank" rel="noopener">${label}</a>`;
+  const frame = (src, h, extra)=> `<div class="media-frame" style="height:${h}px;"><iframe src="${escapeHtml(src)}" loading="lazy" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen ${extra||''}></iframe></div>`;
+  // YouTube
+  let id = null;
+  if(host === 'youtu.be') id = u.pathname.slice(1).split('/')[0];
+  else if(host.endsWith('youtube.com')){
+    id = u.searchParams.get('v') || (u.pathname.match(/\/(?:shorts|embed|live)\/([\w-]{6,})/)||[])[1];
+  }
+  if(id) return frame(`https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1`, 200) + open('Open in YouTube');
+  // Google Drive file
+  const drive = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{10,})/);
+  if(drive) return frame(`https://drive.google.com/file/d/${drive[1]}/preview`, 120) + open('Open in Google Drive');
+  // Spotify
+  const sp = url.match(/open\.spotify\.com\/(?:intl-\w+\/)?(track|album|playlist|episode)\/([A-Za-z0-9]+)/);
+  if(sp) return frame(`https://open.spotify.com/embed/${sp[1]}/${sp[2]}`, sp[1]==='track' ? 152 : 232) + open('Open in Spotify');
+  // SoundCloud
+  if(host.endsWith('soundcloud.com')) return frame(`https://w.soundcloud.com/player/?url=${encodeURIComponent(url)}&color=%23ff7d92&visual=false`, 130) + open('Open in SoundCloud');
+  // Direct audio / video files
+  if(/\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)(\?|#|$)/i.test(u.pathname)) return `<audio controls preload="none" src="${safe}"></audio>` + open('Download');
+  if(/\.(mp4|webm|mov)(\?|#|$)/i.test(u.pathname)) return `<video controls preload="none" playsinline src="${safe}" style="width:100%;border-radius:12px;margin-top:8px;"></video>`;
+  // anything else (Boomplay, Audiomack, Facebook, WhatsApp…): a clear button instead of a broken player
+  return `<div class="media-link">${ICONS.note}<div style="min-width:0;flex:1;"><b>Listen</b><span>${escapeHtml(host)}</span></div>${open('Open link')}</div>`;
+}
 function renderSongs(){
   const admin = isAdmin();
   const items = data.songs.map(s => `
@@ -2567,7 +2614,7 @@ function renderSongs(){
       </div>
       <div class="song-body">
         <div class="song-body-inner">
-          ${s.audioUrl ? `<audio controls src="${s.audioUrl}"></audio>` : `<p class="desc" style="margin:8px 0 0;">No audio uploaded for this song.</p>`}
+          ${s.audioUrl ? mediaEmbed(s.audioUrl) : `<p class="desc" style="margin:8px 0 0;">No audio added for this song.</p>`}
           <div class="lyrics">${s.lyrics || 'No lyrics added yet.'}</div>
         </div>
       </div>
@@ -2586,7 +2633,7 @@ function renderSongs(){
       </div>
       <div class="row" style="width:100%;"><textarea id="song-lyrics" placeholder="Lyrics" style="width:100%;">${v('lyrics')}</textarea></div>
       <div class="row">
-        <input type="url" id="song-audio" placeholder="Audio link (optional)" value="${v('audioUrl')}" style="flex:1;min-width:150px;">
+        <input type="text" inputmode="url" autocapitalize="off" autocorrect="off" id="song-audio" placeholder="Link: YouTube, Google Drive, Spotify, mp3… (optional)" value="${v('audioUrl')}" style="flex:1;min-width:150px;">
         <button class="btn" id="add-song">${ed ? 'Save changes' : 'Add song'}</button>
         ${ed ? '<button class="btn ghost" id="cancel-song-edit">Cancel</button>' : ''}
       </div>
@@ -3190,7 +3237,7 @@ function attachHandlers(){
     const title = document.getElementById('song-title').value.trim();
     if(!title){ document.getElementById('song-title').focus(); return; }
     const fields = { title, category: document.getElementById('song-cat').value.trim(),
-      lyrics: document.getElementById('song-lyrics').value.trim(), audioUrl: document.getElementById('song-audio').value.trim() };
+      lyrics: document.getElementById('song-lyrics').value.trim(), audioUrl: cleanLink(document.getElementById('song-audio').value) };
     const existing = editingLibSongId ? data.songs.find(x=>x.id===editingLibSongId) : null;
     if(existing){ Object.assign(existing, fields); showToast('Song updated'); }
     else data.songs.push({ id: uid(), ...fields });
