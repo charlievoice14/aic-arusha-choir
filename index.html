@@ -541,7 +541,15 @@ input,textarea,select{ font-size:16px !important; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
 <script>
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const POSITIONS = ["Choir Member","Choir Leader","Assistant Choir Leader","Section Leader","Chairperson","Secretary","Treasurer"];
+const POSITIONS = ["Choir Member","Choir Leader","Assistant Choir Leader","Music Director","Section Leader","Chairperson","Assistant Chairperson","Secretary","Assistant Secretary","Treasurer","Assistant Treasurer"];
+const VOICE_PARTS = ["Soprano","Alto","Tenor","Bass","Musician"];
+const INSTRUMENTS = ["Keyboard","Piano","Guitar","Bass guitar","Drums","Percussion","Saxophone","Trumpet","Violin","Other"];
+function voiceLabel(m){ if(!m || !m.voicePart) return ''; return m.voicePart === 'Musician' ? (m.instrument ? 'Musician · ' + m.instrument : 'Musician') : m.voicePart; }
+function voiceOptions(cur){ return '<option value="">Select</option>' + VOICE_PARTS.map(v=>`<option value="${v}" ${v===cur?'selected':''}>${v === 'Musician' ? 'Musician (instrument)' : v}</option>`).join(''); }
+function instrumentRow(prefix, m){
+  const show = m && m.voicePart === 'Musician';
+  return `<div class="field" id="${prefix}-instr-row" style="${show ? '' : 'display:none;'}"><label>Instrument</label><div class="field-box"><select id="${prefix}-instrument"><option value="">Select</option>${INSTRUMENTS.map(i=>`<option ${m && m.instrument===i ? 'selected' : ''}>${i}</option>`).join('')}</select></div></div>`;
+}
 const EVENT_TYPES = ["Service","Rehearsal","Concert","Crusade","Special Program","Other"];
 const TAB_ORDER = ["home","ratiba","events","mahudhurio","songs","wanachama","ripoti"];
 let pendingNavDir = null;
@@ -1177,8 +1185,9 @@ function renderSignup(){
         <div class="field"><label for="su-gender">Gender</label><div class="field-box">
           <select id="su-gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div></div>
         <div class="field"><label for="su-voice">Voice part</label><div class="field-box">
-          <select id="su-voice"><option value="">Select</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select></div></div>
+          <select id="su-voice" data-voice="su">${voiceOptions("")}</select></div></div>
       </div>
+      ${instrumentRow("su", null)}
       <div class="field"><label for="su-position">Position</label><div class="field-box">
         <select id="su-position">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div></div>
       ${pinField('su-pin','Create a PIN','4–6 digits — you\'ll use it to sign in')}
@@ -1296,6 +1305,7 @@ function attachAuthHandlers(){
       id: uid(), name,
       gender: document.getElementById('su-gender').value,
       voicePart: document.getElementById('su-voice').value,
+      instrument: document.getElementById('su-voice').value === 'Musician' ? document.getElementById('su-instrument').value : '',
       position, role, isLeader: position !== 'Choir Member',
       joinedAt: new Date().toISOString()
     };
@@ -1457,7 +1467,7 @@ function renderHome(){
         ${avatarHtml(loggedInMember, 46)}
         <div style="min-width:0;">
           <div class="li-main">${loggedInMember.name}${isAdmin() ? '<span class="admin-chip">Admin</span>' : ''}${loggedInMember.isLeader ? '<span class="leader-chip">Leader</span>' : ''}</div>
-          <div class="li-sub">${loggedInMember.position || 'Choir Member'} · ${loggedInMember.voicePart || 'Voice part not set'}</div>
+          <div class="li-sub">${loggedInMember.position || 'Choir Member'} · ${voiceLabel(loggedInMember) || 'Voice part not set'}</div>
         </div>
       </div>
       <button class="btn ghost" id="edit-my-profile" style="margin-top:14px;width:100%;justify-content:center;display:flex;">Edit my profile</button>
@@ -1722,14 +1732,14 @@ function lineChartSvg(points){
 function renderRipoti(){
   const sessions = reportSessions();
   const members = reportMembers();
-  const voices = ['Soprano','Alto','Tenor','Bass'];
+  const voices = VOICE_PARTS;
   const filters = `
     <div class="rep-filters">
       <div class="field-box"><select id="rep-period">
         ${[['30','Last 30 days'],['90','Last 3 months'],['365','Last 12 months'],['all','All time']].map(([v,l])=>`<option value="${v}" ${reportPeriod===v?'selected':''}>${l}</option>`).join('')}
       </select></div>
       <div class="field-box"><select id="rep-voice">
-        <option value="all">All voices</option>${voices.map(v=>`<option ${reportVoice===v?'selected':''}>${v}</option>`).join('')}
+        <option value="all">All voices</option>${voices.map(v=>`<option value="${v}" ${reportVoice===v?'selected':''}>${v==='Musician'?'Musicians':v}</option>`).join('')}
       </select></div>
     </div>`;
   if(!sessions.length){
@@ -2068,10 +2078,10 @@ function renderWanachama(){
   const counts = { all: members.length, leaders: members.filter(m=>m.isLeader).length, admins: members.filter(m=>m.role==='admin').length };
   if(memberFilter === 'leaders') members = members.filter(m=>m.isLeader);
   else if(memberFilter === 'admins') members = members.filter(m=>m.role==='admin');
-  else if(['Soprano','Alto','Tenor','Bass'].includes(memberFilter)) members = members.filter(m=>m.voicePart===memberFilter);
+  else if(VOICE_PARTS.includes(memberFilter)) members = members.filter(m=>m.voicePart===memberFilter);
   members = sortMembers(members);
 
-  const chips = [['all',`All members`],['leaders','Leaders'],['admins','Admins'],['Soprano','Soprano'],['Alto','Alto'],['Tenor','Tenor'],['Bass','Bass']]
+  const chips = [['all',`All members`],['leaders','Leaders'],['admins','Admins'],['Soprano','Soprano'],['Alto','Alto'],['Tenor','Tenor'],['Bass','Bass'],['Musician','Musicians']]
     .map(([k,l])=>`<button class="chip ${memberFilter===k?'on':''}" data-mfilter="${k}">${l}</button>`).join('');
   const sortOptions = [['name-asc','Name (A–Z)'],['name-desc','Name (Z–A)'],['joined-new','Newest'],['joined-old','Oldest'],['voice','Voice part']];
 
@@ -2090,7 +2100,7 @@ function renderWanachama(){
           ${badge}
         </div>
         <div class="mcard-grid">
-          <div><b>${escapeHtml(m.voicePart || '—')}</b><span>Voice part</span></div>
+          <div><b>${escapeHtml(m.voicePart === 'Musician' ? (m.instrument || 'Musician') : (m.voicePart || '—'))}</b><span>${m.voicePart === 'Musician' ? 'Musician' : 'Voice part'}</span></div>
           <div><b>${escapeHtml(m.gender || '—')}</b><span>Gender</span></div>
           <div><b>${fmtJoined(m)}</b><span>Joined</span></div>
         </div>
@@ -2104,8 +2114,9 @@ function renderWanachama(){
       <div class="field"><label>Full name</label><div class="field-box"><input type="text" id="mem-name" placeholder="e.g. Neema Mollel"></div></div>
       <div class="field-row">
         <div class="field"><label>Gender</label><div class="field-box"><select id="mem-gender"><option value="">Select</option><option>Male</option><option>Female</option></select></div></div>
-        <div class="field"><label>Voice part</label><div class="field-box"><select id="mem-voice"><option value="">Select</option><option>Soprano</option><option>Alto</option><option>Tenor</option><option>Bass</option></select></div></div>
+        <div class="field"><label>Voice part</label><div class="field-box"><select id="mem-voice" data-voice="mem">${voiceOptions("")}</select></div></div>
       </div>
+      ${instrumentRow("mem", null)}
       <div class="field-row">
         <div class="field"><label>Position</label><div class="field-box"><select id="mem-position">${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div></div>
         <div class="field"><label>Access</label><div class="field-box"><select id="mem-role"><option value="member">Member</option><option value="admin">Administrator</option></select></div></div>
@@ -2177,7 +2188,7 @@ function renderMemberDetail(m){
       ${infoRow(IC.drop, 'Baptism', bapt, p.baptized==='yes' && p.baptismDate ? 'on ' + fmtLongDate(p.baptismDate) : '')}
     </div>` : unlockCardHtml()}
     <div class="card dcard">
-      ${infoRow(IC.music, 'Voice part · Gender', `${escapeHtml(m.voicePart||'—')} · ${escapeHtml(m.gender||'—')}`)}
+      ${infoRow(IC.music, 'Voice part · Gender', `${escapeHtml(voiceLabel(m)||'—')} · ${escapeHtml(m.gender||'—')}`)}
       ${infoRow(IC.cal, 'Joined the choir', m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '')}
     </div>
     <div class="card">
@@ -2234,8 +2245,9 @@ function renderProfileEdit(){
       <div class="field"><label>Full name</label><div class="field-box"><input type="text" id="pf-name" value="${escapeHtml(m.name)}"></div></div>
       <div class="field-row">
         <div class="field"><label>Gender</label><div class="field-box">${sel('pf-gender',['Male','Female'],m.gender)}</div></div>
-        <div class="field"><label>Voice part</label><div class="field-box">${sel('pf-voice',['Soprano','Alto','Tenor','Bass'],m.voicePart)}</div></div>
+        <div class="field"><label>Voice part</label><div class="field-box"><select id="pf-voice" data-voice="pf">${voiceOptions(m.voicePart)}</select></div></div>
       </div>
+      ${instrumentRow('pf', m)}
       ${isAdmin() ? `<div class="field"><label>Position</label><div class="field-box"><select id="pf-position">${POSITIONS.map(o=>`<option ${o===(m.position||'Choir Member')?'selected':''}>${o}</option>`).join('')}</select></div></div>` : ''}
     </div>
     ${canPrivate ? `
@@ -2260,6 +2272,10 @@ function renderProfileEdit(){
 function paintFallback(){ return renderHome(); }
 
 function attachV6Handlers(){
+  document.querySelectorAll('select[data-voice]').forEach(sel=>{
+    const sync = ()=>{ const row = document.getElementById(sel.dataset.voice + '-instr-row'); if(row) row.style.display = sel.value === 'Musician' ? '' : 'none'; };
+    sel.addEventListener('change', sync); sync();
+  });
   document.querySelectorAll('[data-mfilter]').forEach(b=>{ b.onclick = ()=>{ memberFilter = b.dataset.mfilter; render(true); }; });
   const tAdd = document.getElementById('toggle-add-member'); if(tAdd) tAdd.onclick = ()=>{ showAddMember = !showAddMember; render(true); };
   const cAdd = document.getElementById('cancel-add-member'); if(cAdd) cAdd.onclick = ()=>{ showAddMember = false; render(true); };
@@ -2311,6 +2327,7 @@ function attachV6Handlers(){
     m.name = name;
     m.gender = document.getElementById('pf-gender').value;
     m.voicePart = document.getElementById('pf-voice').value;
+    m.instrument = m.voicePart === 'Musician' ? document.getElementById('pf-instrument').value : '';
     const posEl = document.getElementById('pf-position');
     if(posEl){ m.position = posEl.value; m.isLeader = posEl.value !== 'Choir Member'; }
     saveData();
@@ -2363,7 +2380,7 @@ function attachV6Handlers(){
 }
 /* re-render but keep what the person already typed in the profile form */
 function keepFormAndRender(){
-  const ids = ['pf-name','pf-gender','pf-voice','pf-position','pf-birth','pf-phone','pf-email','pf-res','pf-bapt','pf-bdate'];
+  const ids = ['pf-name','pf-gender','pf-voice','pf-instrument','pf-position','pf-birth','pf-phone','pf-email','pf-res','pf-bapt','pf-bdate'];
   const vals = {}; ids.forEach(id=>{ const el = document.getElementById(id); if(el) vals[id] = el.value; });
   render(true);
   ids.forEach(id=>{ const el = document.getElementById(id); if(el && vals[id] !== undefined) el.value = vals[id]; });
@@ -2516,7 +2533,7 @@ function renderAdminAttendance(today, todaysSessions){
       const rec = (session.records||{})[m.id] || {};
       return `
         <div class="roll-row">
-          <div style="min-width:0;"><div class="roll-name">${escapeHtml(m.name)}</div><div class="roll-voice">${m.voicePart || ''}</div></div>
+          <div style="min-width:0;"><div class="roll-name">${escapeHtml(m.name)}</div><div class="roll-voice">${escapeHtml(voiceLabel(m))}</div></div>
           <div class="status-btns">
             <button class="stamp present ${rec.status==='present'?'on':''}" data-mark="${m.id}" data-status="present">On time</button>
             <button class="stamp late ${rec.status==='late'?'on':''}" data-mark="${m.id}" data-status="late">Late</button>
@@ -3139,6 +3156,7 @@ function attachHandlers(){
       id: uid(), name,
       gender: document.getElementById('mem-gender').value,
       voicePart: document.getElementById('mem-voice').value,
+      instrument: document.getElementById('mem-voice').value === 'Musician' ? document.getElementById('mem-instrument').value : '',
       position, role: document.getElementById('mem-role').value,
       isLeader: position !== 'Choir Member',
       joinedAt: new Date().toISOString()
