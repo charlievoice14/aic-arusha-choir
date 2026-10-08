@@ -52,6 +52,7 @@ input,textarea,select{ font-size:16px !important; }
   .phone{max-width:420px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative;padding-bottom:82px;}
   body.logged-out .phone{padding-bottom:24px;}
   body.logged-out .search-bar{display:none;}
+  body.no-search .search-bar{display:none;}
   body.logged-out nav.bottomnav{display:none;}
   body.logged-out #notif-toggle, body.logged-out #profile-btn{display:none;}
 
@@ -419,10 +420,10 @@ input,textarea,select{ font-size:16px !important; }
   .song-cat{font-size:11px;color:var(--text-soft);margin-top:2px;}
   .song-chevron{width:16px;height:16px;stroke:var(--text-faint);transition:transform .2s;flex-shrink:0;}
   .song-item.open .song-chevron{transform:rotate(180deg);}
-  .song-body{max-height:0;overflow:hidden;transition:max-height .25s ease;}
-  .song-item.open .song-body{max-height:600px;}
-  .song-body-inner{padding:0 14px 16px;}
-  .lyrics{white-space:pre-wrap;font-size:13px;line-height:1.8;color:var(--text-soft);border-top:1px solid var(--border);padding-top:12px;}
+  .song-body{display:grid;grid-template-rows:0fr;overflow:hidden;transition:grid-template-rows .25s ease;}
+  .song-item.open .song-body{grid-template-rows:1fr;}
+  .song-body-inner{padding:0 14px 16px;min-height:0;overflow:hidden;}
+  .lyrics{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.8;color:var(--text-soft);border-top:1px solid var(--border);padding-top:12px;}
   audio{width:100%;margin-top:10px;height:34px;}
 
   /* QR + scanner */
@@ -985,9 +986,12 @@ document.addEventListener('pointercancel', ()=>{ dragState = null; });
 document.querySelectorAll('nav.bottomnav button').forEach(btn=>{
   btn.addEventListener('click', ()=> jumpTo(btn.dataset.tab));
 });
-document.getElementById('global-search').addEventListener('keydown', e=>{
-  if(e.key === 'Enter'){ searchQuery = e.target.value.trim().toLowerCase(); jumpTo('wanachama'); }
+const SEARCH_TABS = { mahudhurio:'Search members to mark…', wanachama:'Search members...', ripoti:'Search members in reports…' };
+document.getElementById('global-search').addEventListener('input', e=>{
+  searchQuery = e.target.value.trim().toLowerCase();
+  if(SEARCH_TABS[currentTab]) render(true);
 });
+document.getElementById('global-search').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
 
 function jumpTo(tab){
   if(tab !== 'mahudhurio'){
@@ -1002,6 +1006,7 @@ function jumpTo(tab){
   document.querySelectorAll('nav.bottomnav button').forEach(b=>b.classList.remove('active'));
   const el = document.querySelector(`[data-tab="${tab}"]`);
   if(el) el.classList.add('active');
+  if(tab !== currentTab){ searchQuery = ''; document.getElementById('global-search').value = ''; }
   currentTab = tab;
   scanMessage = "";
   render();
@@ -1009,6 +1014,9 @@ function jumpTo(tab){
 
 function updateHeaderForUser(){
   document.body.classList.toggle('logged-out', !loggedInMember);
+  const showSearch = !!SEARCH_TABS[currentTab] && !(currentTab === 'wanachama' && memberDetailId);
+  document.body.classList.toggle('no-search', !showSearch);
+  if(showSearch) document.getElementById('global-search').placeholder = SEARCH_TABS[currentTab];
   const sub = document.getElementById('header-sub');
   if(loggedInMember){
     sub.textContent = `Hi, ${loggedInMember.name.split(' ')[0]}${isAdmin() ? ' · Administrator' : (isRealAdmin() ? ' · Member view' : '')}`;
@@ -1735,7 +1743,7 @@ function renderRipoti(){
   const pts = sessions.slice(-12).map((s,i)=>({ label: fmtDateShort(s.date), pct: rates[rates.length - Math.min(12, sessions.length) + i].pct, title: s.title }));
   if(reportChartIdx !== null && reportChartIdx >= pts.length) reportChartIdx = null;
 
-  const memberRows = members.map(m=>{
+  const memberRows = members.filter(m=>!searchQuery || m.name.toLowerCase().includes(searchQuery)).map(m=>{
     let p=0,l=0,a=0;
     sessions.forEach(s=>{ if(!memberJoinedBy(m, s.date)) return; const r=(s.records||{})[m.id]; if(r && r.status==='present') p++; else if(r && r.status==='late') l++; else a++; });
     const t = p+l+a; return { m, p, l, a, t, pct: t ? Math.round((p+l)/t*100) : 0 };
@@ -1795,6 +1803,8 @@ function renderRipoti(){
     </div>`;
 }
 function attachV7Handlers(){
+  const lyr = document.getElementById('song-lyrics');
+  if(lyr){ const grow = ()=>{ lyr.style.height = 'auto'; const max = Math.round(window.innerHeight*0.7); const h = lyr.scrollHeight + 2; lyr.style.height = Math.min(h, max) + 'px'; lyr.style.overflowY = h > max ? 'auto' : 'hidden'; }; lyr.addEventListener('input', grow); grow(); }
   const tp = document.getElementById('toggle-past'); if(tp) tp.onclick = ()=>{ showAllPast = !showAllPast; render(true); };
   document.querySelectorAll('[data-del-past-session]').forEach(b=>{ b.onclick = ()=>{ const s = data.sessions.find(x=>x.id===b.dataset.delPastSession); if(s) deletePastSession(s); }; });
   document.querySelectorAll('[data-del-past-item]').forEach(b=>{ b.onclick = ()=>{ const ev = data.schedule.find(x=>x.id===b.dataset.delPastItem); if(ev) deleteScheduleItem(ev); }; });
@@ -2502,7 +2512,7 @@ function renderAdminAttendance(today, todaysSessions){
           </div>` : `<p class="desc" style="margin-top:12px;margin-bottom:0;">No check-ins yet — this list updates by itself.</p>`}
       </div>`;
 
-    const rows = data.members.filter(m=>memberJoinedBy(m, session.date)).map(m=>{
+    const rows = data.members.filter(m=>memberJoinedBy(m, session.date) && (!searchQuery || m.name.toLowerCase().includes(searchQuery))).map(m=>{
       const rec = (session.records||{})[m.id] || {};
       return `
         <div class="roll-row">
@@ -2615,7 +2625,7 @@ function renderSongs(){
       <div class="song-body">
         <div class="song-body-inner">
           ${s.audioUrl ? mediaEmbed(s.audioUrl) : `<p class="desc" style="margin:8px 0 0;">No audio added for this song.</p>`}
-          <div class="lyrics">${s.lyrics || 'No lyrics added yet.'}</div>
+          <div class="lyrics">${s.lyrics ? escapeHtml(s.lyrics) : 'No lyrics added yet.'}</div>
         </div>
       </div>
     </div>`).join('');
@@ -2631,7 +2641,7 @@ function renderSongs(){
         <input type="text" id="song-title" placeholder="Song title" value="${v('title')}" style="flex:1;min-width:150px;">
         <input type="text" id="song-cat" placeholder="Category (e.g. Swahili, English)" value="${v('category')}" style="flex:1;min-width:150px;">
       </div>
-      <div class="row" style="width:100%;"><textarea id="song-lyrics" placeholder="Lyrics" style="width:100%;">${v('lyrics')}</textarea></div>
+      <div class="row" style="width:100%;"><textarea id="song-lyrics" placeholder="Lyrics" style="width:100%;min-height:140px;resize:vertical;overflow:hidden;">${v('lyrics')}</textarea></div>
       <div class="row">
         <input type="text" inputmode="url" autocapitalize="off" autocorrect="off" id="song-audio" placeholder="Link: YouTube, Google Drive, Spotify, mp3… (optional)" value="${v('audioUrl')}" style="flex:1;min-width:150px;">
         <button class="btn" id="add-song">${ed ? 'Save changes' : 'Add song'}</button>
