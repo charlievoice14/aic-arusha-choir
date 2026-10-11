@@ -505,6 +505,23 @@ input,textarea,select{ font-size:16px !important; }
   .xbtns{display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
   .xchip{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;flex-shrink:0;}
   .xchip.ok{background:rgba(61,213,152,.14);color:var(--present);} .xchip.no{background:var(--absent-bg);color:var(--absent);} .xchip.wait{background:var(--purple-soft);color:var(--purple);}
+
+  /* ===== v11: discipline ===== */
+  .disc-form{background:var(--card2);border-radius:14px;padding:14px;margin-bottom:14px;animation:slideUp .25s ease both;}
+  .disc-form .field-box textarea:focus{border-color:var(--primary) !important;outline:none;}
+  .disc-types{display:flex;flex-wrap:wrap;gap:6px;}
+  .disc-type{border:1px solid var(--border);background:var(--card);color:var(--text-soft);font-weight:700;font-size:12.5px;padding:7px 12px;border-radius:999px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .disc-type.on{background:var(--b);color:var(--c);border-color:var(--c);}
+  .disc-rec{border-left:3px solid var(--c);background:var(--card2);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+  .disc-rec-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .disc-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
+  .disc-date{font-size:11px;color:var(--text-faint);}
+  .disc-note{font-size:14px;color:var(--text);line-height:1.5;margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere;}
+  .disc-until{font-size:12.5px;color:var(--absent);font-weight:600;margin-top:6px;}
+  .disc-by{font-size:11.5px;color:var(--text-soft);margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .disc-by button{background:none;border:0;color:var(--primary);font-weight:700;font-size:12px;cursor:pointer;padding:0;font-family:'Inter',sans-serif;}
+  .disc-by button.del{color:var(--absent);}
+  .disc-alert{background:var(--absent-bg);color:var(--absent);font-weight:700;font-size:13px;padding:10px 12px;border-radius:12px;margin-bottom:12px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -711,7 +728,7 @@ var QRCode;!function(){function a(a){this.mode=c.MODE_8BIT_BYTE,this.data=a,this
 </script>
 <script>
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const POSITIONS = ["Choir Member","Choir Leader","Assistant Choir Leader","Music Director","Section Leader","Chairperson","Assistant Chairperson","Secretary","Assistant Secretary","Treasurer","Assistant Treasurer"];
+const POSITIONS = ["Choir Member","Choir Leader","Assistant Choir Leader","Music Director","Section Leader","Chairperson","Assistant Chairperson","Secretary","Assistant Secretary","Treasurer","Assistant Treasurer","Discipline Leader","Assistant Discipline Leader"];
 const VOICE_PARTS = ["Soprano","Alto","Tenor","Bass","Musician"];
 const INSTRUMENTS = ["Keyboard","Piano","Guitar","Bass guitar","Drums","Percussion","Saxophone","Trumpet","Violin","Other"];
 function voiceLabel(m){ if(!m || !m.voicePart) return ''; return m.voicePart === 'Musician' ? (m.instrument ? 'Musician · ' + m.instrument : 'Musician') : m.voicePart; }
@@ -2192,6 +2209,9 @@ async function refreshPrivateAccess(){
     profiles = {};
     try{ const p = await fsDb.collection('profiles').doc(loggedInMember.id).get(); if(p.exists) profiles[loggedInMember.id] = p.data(); }catch(e){}
   }
+  recordAuthUid();
+  await syncDisciplineClaims();
+  await refreshDisciplineAccess();
   if(!isEditingField() && !(currentTab === 'songs' && songViewId) && !scannerOpen) render(true);
 }
 /* Older versions kept the admin passcode inside the shared choir data; move it somewhere members can't read. */
@@ -2299,7 +2319,7 @@ const IC = {
 function renderWanachama(){
   if(memberDetailId){
     const m = data.members.find(x=>x.id===memberDetailId);
-    if(m && isAdmin()) return renderMemberDetail(m);
+    if(m && (isAdmin() || isDisciplineLeader(loggedInMember))) return renderMemberDetail(m);
     memberDetailId = null;
   }
   const admin = isAdmin();
@@ -2318,15 +2338,19 @@ function renderWanachama(){
   const cards = members.map(m=>{
     const self = loggedInMember && loggedInMember.id === m.id;
     const badge = m.role==='admin' ? '<span class="mbadge admin">Admin</span>' : m.isLeader ? '<span class="mbadge leader">Leader</span>' : '';
-    const tappable = admin || self;
+    const discView = admin || isDisciplineLeader(loggedInMember);
+    const tappable = discView || self;
+    const nDisc = disciplineUnlocked ? memberDiscipline(m.id).length : 0;
+    const suspended = disciplineUnlocked && activeSuspension(m.id);
     return `
-      <div class="mcard ${tappable?'tap':''}" ${admin ? `data-open-member="${m.id}"` : self ? 'data-edit-own-profile' : ''}>
+      <div class="mcard ${tappable?'tap':''}" ${discView ? `data-open-member="${m.id}"` : self ? 'data-edit-own-profile' : ''}>
         <div class="mcard-top">
           ${avatarHtml(m, 46)}
           <div class="mcard-id">
             <div class="mcard-name">${escapeHtml(m.name)}${self ? ' <span class="you-chip">You</span>' : ''}</div>
             <div class="mcard-pos">${escapeHtml(m.position || 'Choir Member')}</div>
           </div>
+          ${suspended ? '<span class="mbadge" style="background:var(--absent-bg);color:var(--absent);">Suspended</span>' : nDisc ? `<span class="mbadge" style="background:var(--late-bg);color:var(--late);" title="Discipline records">⚑ ${nDisc}</span>` : ''}
           ${badge}
         </div>
         <div class="mcard-grid">
@@ -2397,7 +2421,7 @@ function renderMemberDetail(m){
       <div class="dhero-bar">
         <button class="auth-back" style="margin:0;" id="close-member-detail" aria-label="Back">${ICONS.back}</button>
         <span>Details</span>
-        <button class="auth-back" style="margin:0;" data-edit-profile="${m.id}" aria-label="Edit">${IC.edit}</button>
+        ${isAdmin() ? `<button class="auth-back" style="margin:0;" data-edit-profile="${m.id}" aria-label="Edit">${IC.edit}</button>` : '<span style="width:40px;"></span>'}
       </div>
       ${avatarHtml(m, 92)}
       <div class="dname">${escapeHtml(m.name)}</div>
@@ -2416,7 +2440,7 @@ function renderMemberDetail(m){
       ${infoRow(IC.home, 'Residence', escapeHtml(p.residence||''))}
       ${infoRow(IC.cake, 'Birth date', fmtLongDate(p.birthDate), p.birthDate ? `${ageFrom(p.birthDate)} years old` : '')}
       ${infoRow(IC.drop, 'Baptism', bapt, p.baptized==='yes' && p.baptismDate ? 'on ' + fmtLongDate(p.baptismDate) : '')}
-    </div>` : unlockCardHtml()}
+    </div>` : (isAdmin() ? unlockCardHtml() : '')}
     <div class="card dcard">
       ${infoRow(IC.music, 'Voice part · Gender', `${escapeHtml(voiceLabel(m)||'—')} · ${escapeHtml(m.gender||'—')}`)}
       ${infoRow(IC.cal, 'Joined the choir', m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) : '')}
@@ -2431,7 +2455,8 @@ function renderMemberDetail(m){
       </div>
       <p class="desc" style="margin:10px 0 0;">Attendance rate: <b style="color:var(--text);">${st.pct}%</b> of ${st.total} session${st.total===1?'':'s'}.</p>
     </div>
-    <div class="card">
+    ${disciplineSectionHtml(m)}
+    ${isAdmin() ? `<div class="card">
       <h2>Manage</h2>
       <div class="dmanage">
         <button class="btn ghost" data-edit-profile="${m.id}">Edit profile</button>
@@ -2439,7 +2464,159 @@ function renderMemberDetail(m){
         ${self || !(m.pinHash || m.deviceId) ? '' : `<button class="btn ghost" data-reset-login="${m.id}">Reset login</button>`}
         ${self ? '' : `<button class="btn danger" data-del-member="${m.id}">Remove</button>`}
       </div>
+    </div>` : ''}`;
+}
+
+/* =====================================================================
+   v11: Discipline leaders + discipline records
+   ===================================================================== */
+const DISCIPLINE_TYPES = [
+  ['comment','Comment','var(--blue)','var(--blue-soft)'],
+  ['commend','Commendation','var(--present)','rgba(61,213,152,.14)'],
+  ['warning','Warning','var(--late)','var(--late-bg)'],
+  ['suspension','Suspension','var(--absent)','var(--absent-bg)'],
+  ['action','Other action','var(--purple)','var(--purple-soft)']
+];
+let disciplineUnlocked = false;      // this phone may read/write discipline records
+let disciplineRecs = [];             // [{id, memberId, type, note, until, by, byMemberId, byUid, createdAt, editedAt}]
+let unsubDiscipline = null;
+let discEditId = null;
+let discFormOpen = false;
+const syncedDiscClaims = new Set();
+
+function isDisciplineLeader(m){ return !!(m && /discipline/i.test(m.position || '')); }
+function canDiscipline(){ return isAdmin() || isDisciplineLeader(loggedInMember); }
+function discType(k){ return DISCIPLINE_TYPES.find(t=>t[0]===k) || DISCIPLINE_TYPES[0]; }
+function memberDiscipline(id){ return disciplineRecs.filter(r=>r.memberId === id).sort((a,b)=>b.createdAt - a.createdAt); }
+function activeSuspension(id){ const today = todayStr(); return memberDiscipline(id).find(r=>r.type === 'suspension' && (!r.until || r.until >= today)); }
+
+/* Remember which login (phone) belongs to which member, so leaders can be given access. */
+function recordAuthUid(){
+  if(!loggedInMember || !fsUid) return;
+  if(loggedInMember.authUid !== fsUid){ loggedInMember.authUid = fsUid; saveData(); }
+}
+/* Admin phones give each Discipline Leader's phone permission to read the records. */
+async function syncDisciplineClaims(){
+  if(!adminUnlocked || !canUseCloud()) return;
+  for(const m of data.members){
+    if(!isDisciplineLeader(m) || !m.authUid || syncedDiscClaims.has(m.authUid)) continue;
+    try{
+      const ref = fsDb.collection('disciplineClaims').doc(m.authUid);
+      const d = await ref.get();
+      if(!d.exists || d.data().memberId !== m.id) await ref.set({ memberId: m.id, grantedBy: loggedInMember.id, at: new Date().toISOString() });
+      syncedDiscClaims.add(m.authUid);
+    }catch(e){}
+  }
+}
+async function refreshDisciplineAccess(){
+  if(!canUseCloud() || !loggedInMember){ disciplineUnlocked = false; return; }
+  let ok = adminUnlocked;
+  if(!ok && isDisciplineLeader(loggedInMember)){
+    try{ const c = await fsDb.collection('disciplineClaims').doc(fsUid).get(); ok = c.exists; }catch(e){ ok = false; }
+  }
+  disciplineUnlocked = ok;
+  if(ok && !unsubDiscipline){
+    unsubDiscipline = fsDb.collection('discipline').onSnapshot(qs=>{
+      const list = []; qs.forEach(d=>list.push({ id: d.id, ...d.data() })); disciplineRecs = list;
+      if(currentTab === 'wanachama' && !isEditingField()) render(true);
+    }, ()=>{});
+  }
+  if(!ok && unsubDiscipline){ unsubDiscipline(); unsubDiscipline = null; disciplineRecs = []; }
+}
+
+function disciplineSectionHtml(m){
+  if(!canDiscipline()) return '';
+  if(!disciplineUnlocked){
+    return `
+      <div class="card">
+        <h2>Discipline</h2>
+        <p class="desc" style="margin:0;">${isAdmin()
+          ? 'Unlock member details above (admin passcode) to see and write discipline records.'
+          : 'Your access to discipline records is being set up. An administrator needs to open the app once after you became Discipline Leader — then reopen this page.'}</p>
+      </div>`;
+  }
+  const recs = memberDiscipline(m.id);
+  const editing = discEditId ? recs.find(r=>r.id===discEditId) : null;
+  const showForm = discFormOpen || editing;
+  const susp = activeSuspension(m.id);
+  const form = showForm ? `
+    <div class="disc-form">
+      <div class="field"><label>Type</label>
+        <div class="disc-types">${DISCIPLINE_TYPES.map(t=>`<button type="button" class="disc-type ${((editing ? editing.type : 'comment') === t[0]) ? 'on' : ''}" data-disc-type="${t[0]}" style="--c:${t[2]};--b:${t[3]};">${t[1]}</button>`).join('')}</div>
+        <input type="hidden" id="disc-type" value="${editing ? editing.type : 'comment'}">
+      </div>
+      <div class="field"><label>Comment or action taken</label><div class="field-box"><textarea id="disc-note" maxlength="2000" placeholder="e.g. Missed 3 rehearsals without permission — spoke with them and agreed to improve." style="width:100%;min-height:96px;border-radius:12px;background:var(--card2);border:1px solid transparent;color:var(--text);padding:12px;box-sizing:border-box;">${editing ? escapeHtml(editing.note) : ''}</textarea></div></div>
+      <div class="field" id="disc-until-row" style="${(editing ? editing.type : 'comment') === 'suspension' ? '' : 'display:none;'}"><label>Suspended until</label><div class="field-box"><input type="date" id="disc-until" value="${editing && editing.until ? editing.until : ''}"></div></div>
+      <div class="row" style="margin:0;"><button class="btn" id="disc-save" data-member="${m.id}">${editing ? 'Save changes' : 'Save record'}</button><button class="btn ghost" id="disc-cancel">Cancel</button></div>
+    </div>` : '';
+  const list = recs.map(r=>{
+    const t = discType(r.type);
+    const mineRec = r.byUid === fsUid;
+    return `
+      <div class="disc-rec" style="--c:${t[2]};">
+        <div class="disc-rec-top">
+          <span class="disc-chip" style="color:${t[2]};background:${t[3]};">${t[1]}</span>
+          <span class="disc-date">${fmtChatTime(r.createdAt)}${r.editedAt ? ' · edited' : ''}</span>
+        </div>
+        <div class="disc-note">${escapeHtml(r.note)}</div>
+        ${r.type === 'suspension' && r.until ? `<div class="disc-until">Until ${fmtLongDate(r.until)}${r.until < todayStr() ? ' (ended)' : ''}</div>` : ''}
+        <div class="disc-by">By ${escapeHtml(r.by || 'Leader')}
+          ${mineRec ? `<button data-disc-edit="${r.id}">Edit</button>` : ''}
+          ${mineRec || adminUnlocked ? `<button class="del" data-disc-del="${r.id}">Delete</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <h2 style="margin:0;">Discipline</h2>
+        ${!showForm ? `<button class="btn small" id="disc-new">+ Add record</button>` : ''}
+      </div>
+      <p class="desc" style="margin:6px 0 12px;">Private — only administrators and the Discipline Leader can see this.</p>
+      ${susp ? `<div class="disc-alert">Currently suspended${susp.until ? ' until ' + fmtLongDate(susp.until) : ''}.</div>` : ''}
+      ${form}
+      ${list || (showForm ? '' : '<div class="empty" style="padding:14px 0;">No discipline records. 👍</div>')}
     </div>`;
+}
+let lastDiscRetry = 0;
+function attachV11Handlers(){
+  if(adminUnlocked) syncDisciplineClaims();
+  if(currentTab === 'wanachama' && memberDetailId && !disciplineUnlocked && isDisciplineLeader(loggedInMember) && Date.now() - lastDiscRetry > 15000){
+    lastDiscRetry = Date.now(); refreshDisciplineAccess().then(()=>{ if(disciplineUnlocked) render(true); });
+  }
+  const nw = document.getElementById('disc-new'); if(nw) nw.onclick = ()=>{ discFormOpen = true; discEditId = null; render(true); const n = document.getElementById('disc-note'); if(n) n.focus(); };
+  const cn = document.getElementById('disc-cancel'); if(cn) cn.onclick = ()=>{ discFormOpen = false; discEditId = null; render(true); };
+  document.querySelectorAll('[data-disc-type]').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('[data-disc-type]').forEach(x=>x.classList.toggle('on', x===b));
+      document.getElementById('disc-type').value = b.dataset.discType;
+      document.getElementById('disc-until-row').style.display = b.dataset.discType === 'suspension' ? '' : 'none';
+    };
+  });
+  const sv = document.getElementById('disc-save');
+  if(sv) sv.onclick = async ()=>{
+    const note = document.getElementById('disc-note').value.trim();
+    if(!note){ document.getElementById('disc-note').focus(); return; }
+    const type = document.getElementById('disc-type').value;
+    const until = type === 'suspension' ? document.getElementById('disc-until').value : '';
+    sv.disabled = true;
+    try{
+      if(discEditId){
+        await fsDb.collection('discipline').doc(discEditId).update({ type, note, until, editedAt: Date.now() });
+      } else {
+        await fsDb.collection('discipline').add({ memberId: sv.dataset.member, type, note, until,
+          by: loggedInMember.name, byMemberId: loggedInMember.id, byUid: fsUid, createdAt: Date.now() });
+      }
+      discFormOpen = false; discEditId = null; render(true); showToast('Discipline record saved');
+    }catch(e){ console.error(e); sv.disabled = false; showAlertModal("Couldn't save the record. Check your internet connection. If it keeps failing, ask an administrator to open the app so your access is set up."); }
+  };
+  document.querySelectorAll('[data-disc-edit]').forEach(b=>{ b.onclick = ()=>{ discEditId = b.dataset.discEdit; discFormOpen = false; render(true); }; });
+  document.querySelectorAll('[data-disc-del]').forEach(b=>{
+    b.onclick = ()=> showConfirmModal('Delete this discipline record?', async ()=>{
+      try{ await fsDb.collection('discipline').doc(b.dataset.discDel).delete(); showToast('Record deleted'); }
+      catch(e){ showAlertModal("Couldn't delete the record."); }
+    });
+  });
 }
 
 /* ---------------- PROFILE EDIT ---------------- */
@@ -2513,7 +2690,7 @@ function attachV6Handlers(){
   document.querySelectorAll('[data-open-member]').forEach(el=>{ el.onclick = ()=>{ memberDetailId = el.dataset.openMember; window.scrollTo(0,0); render(); }; });
   document.querySelectorAll('[data-edit-own-profile]').forEach(el=>{ el.onclick = ()=> openProfileEditor(loggedInMember.id); });
   document.querySelectorAll('[data-edit-profile]').forEach(el=>{ el.onclick = (e)=>{ e.stopPropagation(); openProfileEditor(el.dataset.editProfile); }; });
-  const closeD = document.getElementById('close-member-detail'); if(closeD) closeD.onclick = ()=>{ memberDetailId = null; render(); };
+  const closeD = document.getElementById('close-member-detail'); if(closeD) closeD.onclick = ()=>{ memberDetailId = null; discFormOpen = false; discEditId = null; render(); };
   const myProf = document.getElementById('edit-my-profile'); if(myProf) myProf.onclick = ()=> openProfileEditor(loggedInMember.id);
 
   const unlockBtn = document.getElementById('unlock-btn');
@@ -4382,6 +4559,7 @@ function attachHandlers(){
   attachV7Handlers();
   attachV9Handlers();
   attachV10Handlers();
+  attachV11Handlers();
   generateQrIfNeeded();
 }
 
