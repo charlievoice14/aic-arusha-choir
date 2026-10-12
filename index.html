@@ -541,6 +541,14 @@ input,textarea,select{ font-size:16px !important; }
   .ev-sec-time{font-size:12px;color:var(--text);font-weight:600;}
   .ev-sec-count{margin-left:auto;font-size:11.5px;color:var(--text-soft);}
   .ev-sec-empty{font-size:12.5px;color:var(--text-faint);padding:6px 10px 10px;}
+
+  .ds-row{display:flex;gap:12px;align-items:center;}
+  .ds-ic{width:40px;height:40px;border-radius:12px;background:rgba(61,213,152,.14);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .ds-ic svg{width:20px;height:20px;fill:none;stroke:var(--present);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .ds-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .ds-pick{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:'Inter',sans-serif;}
+  .ds-pick b{display:block;color:var(--text);font-size:14px;} .ds-pick span{display:block;color:var(--text-soft);font-size:12px;margin-top:2px;}
+  .ds-pick:active{border-color:var(--primary);}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px;margin-bottom:16px;}
   .card h2{font-family:'Fraunces',serif;font-weight:600;font-size:17px;margin:0 0 4px;color:var(--text);}
   .card .desc{font-size:12.5px;color:var(--text-soft);margin:0 0 14px;}
@@ -872,9 +880,15 @@ function idArray(a){ return Array.isArray(a) && a.every(x=>isObj(x) && x.id != n
 
 /* Three-way merge: apply what THIS device changed (base → local) on top of the latest server copy,
    so two phones checking in or editing at the same moment don't overwrite each other. */
+function isAttendanceRec(v){ return isObj(v) && typeof v.status === 'string' && ('time' in v); }
 function merge3(base, local, remote){
   if(same(local, base)) return clone(remote);
   if(same(remote, base) || remote === undefined) return clone(local);
+  // attendance: a real check-in / leader mark always wins over an automatic "absent"
+  if(isAttendanceRec(local) && isAttendanceRec(remote)){
+    if(local.auto && !remote.auto) return clone(remote);
+    if(remote.auto && !local.auto) return clone(local);
+  }
   if(isObj(local) && isObj(remote)){
     const b = isObj(base) ? base : {}, out = {};
     const keys = new Set([...Object.keys(b), ...Object.keys(local), ...Object.keys(remote)]);
@@ -1007,6 +1021,8 @@ function saveData(){
         const remote = snap.exists ? mergeSharedDefaults(snap.data()) : mergeSharedDefaults({});
         if(remote.appVersion > APP_VERSION){ throw Object.assign(new Error('outdated'), {code:'outdated'}); }
         merged = mergeSharedDefaults(merge3(base, local, remote));
+        finalizeSessions(merged);
+        guardAgainstWipe(remote, merged);
         merged.appVersion = APP_VERSION;
         tx.set(sharedRef, merged);
       });
@@ -1016,7 +1032,11 @@ function saveData(){
     }catch(e){
       console.error('Failed to save data', e);
       setSyncStatus('offline');
-      if(e && (e.code === 'outdated' || e.code === 'permission-denied')){ showUpdateBanner(); showToast('This copy of the app is out of date — tap Update.'); }
+      if(e && e.code === 'wipe-guard'){
+        showToast('A change that would have removed lots of data was blocked. Refreshing…');
+        try{ const snap = await sharedRef.get({ source:'server' }); if(snap.exists){ data = mergeSharedDefaults(snap.data()); baseData = clone(data); resolveLoggedInMember(); render(true); setSyncStatus('live'); } }catch(e2){}
+      }
+      else if(e && (e.code === 'outdated' || e.code === 'permission-denied')){ showUpdateBanner(); showToast('This copy of the app is out of date — tap Update.'); }
       else showToast('Could not save — check your internet connection.');
     }
   });
@@ -1672,6 +1692,7 @@ function renderHome(){
     <h3 class="sec-title">Recent sessions<span class="see-all" data-tab-jump="ripoti">View reports</span></h3>
     <div class="hscroll">${recentHtml}</div>
 
+    ${dataSafetyCardHtml()}
     <h3 class="sec-title">Account</h3>
     <div class="card account-card">
       <div class="account-row">
@@ -1884,7 +1905,7 @@ function deleteScheduleItem(ev){
       data.sessions = data.sessions.filter(s=>!ids.has(s.id));
       if(ids.has(activeSessionId)) activeSessionId = null;
     }
-    saveData(); render(true);
+    withBulkDelete(()=>saveData()); render(true);
     showToast(withAtt ? `Deleted with ${sess.length} attendance record${sess.length===1?'':'s'}` : 'Schedule item deleted');
   };
 }
@@ -2175,18 +2196,23 @@ function ensureScheduledSessions(){
     applyExcuses(data.sessions[data.sessions.length-1]);
     changed = true;
   });
-  data.sessions.forEach(s=>{
+  return changed;
+}
+function needsFinalize(){ return data.sessions.some(s=>!s.finalized && sessionState(s) === 'closed'); }
+/* Runs inside the save transaction on the freshest server data, so a phone that was asleep
+   or offline can never overwrite real check-ins with "absent". */
+function finalizeSessions(d){
+  (d.sessions||[]).forEach(s=>{
     if(s.finalized || sessionState(s) !== 'closed') return;
     s.records = s.records || {};
-    applyExcuses(s);
-    data.members.forEach(m=>{ if(!s.records[m.id] && memberJoinedBy(m, s.date)) s.records[m.id] = { status:'absent', time:'', auto:true }; });
-    s.finalized = true; changed = true;
+    applyExcuses(s, d);
+    (d.members||[]).forEach(m=>{ if(!s.records[m.id] && memberJoinedBy(m, s.date)) s.records[m.id] = { status:'absent', time:'', auto:true }; });
+    s.finalized = true;
   });
-  return changed;
 }
 let lastTickSig = '';
 function sessionTick(){
-  if(ensureScheduledSessions()) saveData();
+  if(ensureScheduledSessions() || needsFinalize()) saveData();
   const sig = data.sessions.filter(s=>s.date===todayStr()).map(s=>s.id+':'+sessionState(s)).join('|');
   if(sig !== lastTickSig){
     lastTickSig = sig;
@@ -2230,6 +2256,7 @@ async function refreshPrivateAccess(){
     try{ const p = await fsDb.collection('profiles').doc(loggedInMember.id).get(); if(p.exists) profiles[loggedInMember.id] = p.data(); }catch(e){}
   }
   recordAuthUid();
+  if(adminUnlocked) dailyBackup();
   await syncDisciplineClaims();
   await refreshDisciplineAccess();
   if(!isEditingField() && !(currentTab === 'songs' && songViewId) && !scannerOpen) render(true);
@@ -2721,6 +2748,147 @@ function attachV12Handlers(){
       attachV12Handlers();
     };
   });
+}
+
+/* =====================================================================
+   v13: data safety — wipe guard, automatic daily backups, restore
+   ===================================================================== */
+let allowBulkDelete = false;     // set only by deliberate admin actions that remove many items at once
+let backupList = [];             // [{id, at, by, counts, size}]
+let backupBusy = false;
+setInterval(()=>{ if(adminUnlocked) dailyBackup(); }, 30*60000);
+
+/* Refuse any save that would silently remove lots of data (e.g. a phone with an old/empty copy). */
+function guardAgainstWipe(remote, merged){
+  if(allowBulkDelete) return;
+  for(const k of COLLECTIONS){
+    const before = (remote[k]||[]).length, after = (merged[k]||[]).length;
+    const keep = new Set((merged[k]||[]).map(x=>x && x.id));
+    const lost = (remote[k]||[]).filter(x=>x && x.id && !keep.has(x.id)).length;
+    if((before > 0 && after === 0) || lost > 3){
+      throw Object.assign(new Error('wipe-guard: ' + k + ' ' + before + '→' + after), { code: 'wipe-guard' });
+    }
+  }
+}
+async function withBulkDelete(fn){
+  allowBulkDelete = true;
+  try{ await fn(); } finally { allowBulkDelete = false; }
+}
+
+function dataCounts(d){
+  return { members: (d.members||[]).length, sessions: (d.sessions||[]).length, songs: (d.songs||[]).length,
+           events: (d.events||[]).length, schedule: (d.schedule||[]).length };
+}
+function dataSizeKB(d){ try{ return Math.round(JSON.stringify(d).length / 1024); }catch(e){ return 0; } }
+
+async function loadBackupList(){
+  if(!adminUnlocked || !canUseCloud()) return;
+  try{
+    const qs = await fsDb.collection('backups').get();
+    const list = []; qs.forEach(d=>{ const v = d.data() || {}; list.push({ id: d.id, at: v.at, by: v.by, counts: v.counts || {}, size: v.size || 0 }); });
+    backupList = list.sort((a,b)=> (b.id).localeCompare(a.id));
+  }catch(e){}
+}
+async function makeBackup(manual){
+  if(!adminUnlocked || !canUseCloud() || backupBusy) return false;
+  if(!data.members || !data.members.length) return false;            // never back up an empty copy
+  backupBusy = true;
+  try{
+    const now = new Date();
+    const id = manual ? localDateStr(now) + '_' + now.toTimeString().slice(0,5).replace(':','') : localDateStr(now);
+    const json = JSON.stringify(data);
+    await fsDb.collection('backups').doc(id).set({ json, at: now.toISOString(), by: loggedInMember ? loggedInMember.name : '', counts: dataCounts(data), size: json.length });
+    await loadBackupList();
+    // keep one backup per day for 30 days, plus the 6 most recent extra (hourly/manual) ones
+    const daily = backupList.filter(b=>!b.id.includes('_')), extra = backupList.filter(b=>b.id.includes('_'));
+    for(const b of [...daily.slice(30), ...extra.slice(6)]){ try{ await fsDb.collection('backups').doc(b.id).delete(); }catch(e){} }
+    await loadBackupList();
+    return true;
+  }catch(e){ console.warn('backup failed', e); return false; }
+  finally{ backupBusy = false; }
+}
+/* An admin phone saves one backup per day automatically. */
+async function dailyBackup(){
+  if(!adminUnlocked) return;
+  await loadBackupList();
+  const today = localDateStr(new Date());
+  const latest = backupList.reduce((m,b)=> Math.max(m, new Date(b.at).getTime() || 0), 0);
+  if(!backupList.some(b=>b.id === today)) await makeBackup(false);
+  else if(Date.now() - latest > 3*3600000) await makeBackup(true);     // extra copy every few hours while the app is in use
+  if(currentTab === 'home' && !isEditingField()) render(true);
+}
+async function restoreBackup(id){
+  const d = await fsDb.collection('backups').doc(id).get();
+  if(!d.exists) throw new Error('missing');
+  const restored = mergeSharedDefaults(JSON.parse(d.data().json));
+  restored.appVersion = APP_VERSION;
+  await makeBackup(true);                                            // keep a copy of what we're replacing
+  await fsDb.runTransaction(async (tx)=>{ await tx.get(sharedRef); tx.set(sharedRef, restored); });
+  data = clone(restored); baseData = clone(restored);
+  resolveLoggedInMember(); resolveBoundMember();
+}
+function dataSafetyCardHtml(){
+  if(!isAdmin()) return '';
+  if(!adminUnlocked) return `
+    <h3 class="sec-title">Data safety</h3>
+    <div class="card"><p class="desc" style="margin:0;">Unlock member details in the Members tab (admin passcode) to turn on automatic daily backups on this phone.</p></div>`;
+  const last = backupList[0];
+  const kb = dataSizeKB(data);
+  return `
+    <h3 class="sec-title">Data safety</h3>
+    <div class="card">
+      <div class="ds-row">
+        <div class="ds-ic">${IC.lock}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="li-main">Automatic backups</div>
+          <div class="li-sub">${last ? `Last backup ${fmtChatTime(new Date(last.at).getTime())} · ${backupList.length} kept` : 'No backup yet — one is made automatically each day.'}</div>
+        </div>
+      </div>
+      ${kb > 700 ? `<div class="disc-alert" style="margin-top:12px;background:var(--late-bg);color:var(--late);">The choir data is getting large (${kb} KB of 1000 KB). Delete old sessions in Schedule → Done to keep the app healthy.</div>` : ''}
+      <div class="ds-btns">
+        <button class="btn ghost small" id="ds-backup">Back up now</button>
+        <button class="btn ghost small" id="ds-restore" ${backupList.length ? '' : 'disabled'}>Restore…</button>
+        <button class="btn ghost small" id="ds-download">Download copy</button>
+      </div>
+    </div>`;
+}
+function restoreModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-height:80vh;overflow:auto;">
+      <p style="font-weight:700;color:var(--text);margin-bottom:6px;">Restore a backup</p>
+      <p class="desc" style="margin-bottom:12px;">This replaces the current choir data on every phone with the backup you choose. A copy of the current data is saved first.</p>
+      ${backupList.map(b=>`
+        <button class="ds-pick" data-restore="${b.id}">
+          <b>${new Date(b.at).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</b>
+          <span>${b.counts.members||0} members · ${b.counts.sessions||0} sessions · ${b.counts.songs||0} songs${b.by ? ' · by ' + escapeHtml(b.by) : ''}</span>
+        </button>`).join('')}
+      <div class="modal-actions"><button class="btn ghost" id="modal-cancel-btn">Close</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = ()=> overlay.remove();
+  overlay.querySelector('#modal-cancel-btn').onclick = close;
+  overlay.querySelectorAll('[data-restore]').forEach(b=>{
+    b.onclick = ()=>{
+      close();
+      showConfirmModal('Restore this backup for everyone? Changes made after it will be replaced.', async ()=>{
+        try{ await restoreBackup(b.dataset.restore); showToast('Backup restored'); render(true); }
+        catch(e){ console.error(e); showAlertModal("Couldn't restore that backup. Check your internet connection and try again."); }
+      });
+    };
+  });
+}
+function attachV13Handlers(){
+  const bk = document.getElementById('ds-backup');
+  if(bk) bk.onclick = async ()=>{ bk.disabled = true; const ok = await makeBackup(true); showToast(ok ? 'Backup saved' : "Backup failed — check your connection"); render(true); };
+  const rs = document.getElementById('ds-restore'); if(rs) rs.onclick = restoreModal;
+  const dl = document.getElementById('ds-download');
+  if(dl) dl.onclick = ()=>{
+    const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'aic-choir-backup-' + localDateStr(new Date()) + '.json';
+    document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
 }
 
 /* ---------------- PROFILE EDIT ---------------- */
@@ -4105,9 +4273,10 @@ function finishScan(raw){
 function excusesList(){ return Array.isArray(data.excuses) ? data.excuses : []; }
 function excuseMatches(x, s){ return (x.sessionId && x.sessionId === s.id) || (x.scheduleId && s.scheduleId === x.scheduleId && x.date === s.date); }
 /* approved permission → the member is recorded as Excused (unless they came anyway) */
-function applyExcuses(s){
+function applyExcuses(s, d){
   let changed = false;
-  excusesList().forEach(x=>{
+  const list = d ? (Array.isArray(d.excuses) ? d.excuses : []) : excusesList();
+  list.forEach(x=>{
     if(x.status !== 'approved' || !excuseMatches(x, s)) return;
     s.records = s.records || {};
     const r = s.records[x.memberId];
@@ -4689,6 +4858,7 @@ function attachHandlers(){
   attachV10Handlers();
   attachV11Handlers();
   attachV12Handlers();
+  attachV13Handlers();
   generateQrIfNeeded();
 }
 
