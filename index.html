@@ -3183,7 +3183,8 @@ function renderAdminAttendance(today, todaysSessions, ro){
           <p class="desc" style="margin:0;">${fmtDate(session.date)} · Starts ${session.startTime || '—'}</p></div>
         </div>
         <div style="margin:10px 0 4px;">${sessionStatusChip(session)}</div>
-        ${state === 'open' ? `
+        ${state === 'open' && ro ? `
+          <p class="desc" style="margin-top:10px;">Check-in is open. The QR code is shown on the administrator's phone.</p>` : state === 'open' ? `
           <div class="qr-wrap">
             <div id="qr-box"></div>
             <div class="qr-code-text">${session.checkinCode}</div>
@@ -4069,7 +4070,7 @@ function copyOrderOfService(eventId){
 
 /* ---------------- QR + SCANNER LOGIC ---------------- */
 function generateQrIfNeeded(){
-  if(!canViewAll() || currentTab !== 'mahudhurio') return;
+  if(!isAdmin() || currentTab !== 'mahudhurio') return;
   const box = document.getElementById('qr-box');
   if(!box) return;
   const session = activeSessionId ? data.sessions.find(s=>s.id===activeSessionId) : null;
