@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "79314643242",
+    "firebase_url": "https://aic-arusha-choir-default-rtdb.firebaseio.com",
+    "project_id": "aic-arusha-choir",
+    "storage_bucket": "aic-arusha-choir.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:79314643242:android:b61af346233489a0e7d653",
+        "android_client_info": {
+          "package_name": "org.aicarusha.choir"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0PWAb_BnZf25wBS9EMaBFwSeGCSxg6rM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
