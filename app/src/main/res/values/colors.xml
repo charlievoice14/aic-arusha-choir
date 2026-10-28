@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="navy">#0D1830</color>
+    <color name="icon_bg">#0D1830</color>
+    <color name="notification_accent">#3D7BFF</color>
+</resources>

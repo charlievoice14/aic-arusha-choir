@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Firebase (notifications when the app is closed) switches on once app/google-services.json is added.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+} else {
+    println 'WARNING: app/google-services.json is missing — closed-app notifications are switched off in this build.'
+}
+
+def runNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace 'org.aicarusha.choir'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "org.aicarusha.choir"
+        minSdk 24
+        targetSdk 34
+        versionCode runNumber
+        versionName "1.0." + runNumber
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("choir-release.jks")
+            storePassword "AicArushaChoir2026"
+            keyAlias "choir"
+            keyPassword "AicArushaChoir2026"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:33.5.1')
+    implementation 'com.google.firebase:firebase-messaging'
+}
