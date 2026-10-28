@@ -3328,6 +3328,9 @@ let pushToken = lsGet(PUSH_TOKEN_KEY) || '';
 let pushBusy = false;
 
 function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); }
+/* Android: our own app (old version without notifications) or an in-app browser like WhatsApp's */
+function isOldChoirApk(){ return /AICChoirApp/.test(navigator.userAgent) && !(window.AndroidBridge && window.AndroidBridge.notify); }
+function isAndroidInAppBrowser(){ return /Android/.test(navigator.userAgent) && /; wv\)/.test(navigator.userAgent) && !/AICChoirApp/.test(navigator.userAgent); }
 function isStandalone(){ return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; }
 function nativePush(){ return !!(window.AndroidBridge && typeof window.AndroidBridge.getPushToken === 'function'); }
 async function webPushSupported(){
@@ -3390,7 +3393,10 @@ function pushHelpText(){
   const perm = notiPermissionState();
   if(window.ChoirDesktop) return perm === 'denied' ? 'Blocked in your computer settings.' : 'Shown on this computer while the AIC Choir app is open.';
   if(perm === 'denied') return 'Blocked in your phone settings — allow notifications for this app to turn them on.';
-  if(isIOS() && !isStandalone()) return 'On iPhone: tap Share ⬆ → "Add to Home Screen", then open the choir app from your home screen and turn this on.';
+  if(isOldChoirApk()) return 'This version of the AIC Choir app can\'t show notifications. Install the newest app (ask your choir admin for the APK) and turn this on again.';
+  if(isAndroidInAppBrowser()) return 'You opened the choir link inside another app. Open it in Chrome (⋮ → Open in Chrome), or install the AIC Choir app, to get notifications.';
+  if(isIOS() && !isStandalone()) return 'On iPhone, notifications only work in the home-screen app: open this link in Safari, tap Share ⬆ → "Add to Home Screen", then open the choir app from your home screen and turn this on.';
+  if(isIOS() && perm === 'unsupported') return 'Your iPhone needs iOS 16.4 or newer for notifications. Update it in Settings → General → Software Update, then open the choir app again.';
   if(perm === 'unsupported') return 'This browser can\'t show phone notifications. You\'ll still see them here.';
   if(pushActive()) return 'On — you\'ll be notified even when the app is closed.';
   return 'Announcements and when rehearsals or services start — even when the app is closed.';
@@ -3401,16 +3407,17 @@ function pushHintHtml(){
   const perm = notiPermissionState();
   if(perm === 'denied') return '';
   const iosHome = isIOS() && !isStandalone();
-  if(perm === 'unsupported' && !iosHome) return '';
+  if(perm === 'unsupported' && !iosHome && !isIOS()) return '';
+  const iosOld = isIOS() && !iosHome && perm === 'unsupported';
   return `
     <div class="push-hint">
       <div class="push-hint-ic">🔔</div>
       <div style="flex:1;min-width:0;">
         <b>Turn on notifications</b>
-        <span>${iosHome ? 'Get announcements and rehearsal reminders on your iPhone: tap Share ⬆ → "Add to Home Screen", then open the choir app from your home screen.' : 'Get announcements and rehearsal reminders even when the app is closed.'}</span>
+        <span>${iosOld ? 'Your iPhone needs iOS 16.4 or newer for notifications. Update it in Settings → General → Software Update, then reopen the choir app.' : iosHome ? 'Get announcements and rehearsal reminders on your iPhone: open this link in Safari, tap Share ⬆ → "Add to Home Screen", then open the choir app from your home screen.' : 'Get announcements and rehearsal reminders even when the app is closed.'}</span>
         <div class="push-hint-btns">
-          ${iosHome ? '' : '<button class="btn small" id="push-on">Turn on</button>'}
-          <button class="btn ghost small" id="push-later">${iosHome ? 'Got it' : 'Not now'}</button>
+          ${iosHome || iosOld ? '' : '<button class="btn small" id="push-on">Turn on</button>'}
+          <button class="btn ghost small" id="push-later">${iosHome || iosOld ? 'Got it' : 'Not now'}</button>
         </div>
       </div>
     </div>`;
