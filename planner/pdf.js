@@ -45,7 +45,7 @@
     const show = onlyPractice ? { event: false, rehearsal: false, practice: true, deadline: false, travel: false } : { event: true, rehearsal: true, practice: o.sec.practice, deadline: o.sec.tasks, activity: o.sec.plans !== false, travel: o.sec.travel };
     const items = L.calItems(a, b, { show, dept: o.dept, event: o.eventId });
     const ssAll = sessIn(a, b, o).filter(L.eligible);
-    blocks.push({ stats: [['Events', items.filter(i => i.kind === 'event' || i.kind === 'rehearsal').length, '#6c6cf0'], ['Practice sessions', ssAll.length, '#2fb36a'], ['Practice hours', (ssAll.reduce((t, s) => t + (L.sessNet(s) || 0), 0) / 60).toFixed(1), '#14a89b'], ['Deadlines', items.filter(i => i.kind === 'deadline').length, '#e0566b'], ['Plans running', items.filter(i => i.kind === 'activity').length, '#9b8cff'], ['Travel legs', items.filter(i => i.kind === 'travel').length, '#e3b04b']] });
+    blocks.push({ stats: [['Events', items.filter(i => i.kind === 'event' || i.kind === 'rehearsal').length, '#6c6cf0'], ['Practice sessions', ssAll.length, '#C9922E'], ['Practice hours', (ssAll.reduce((t, s) => t + (L.sessNet(s) || 0), 0) / 60).toFixed(1), '#14a89b'], ['Deadlines', items.filter(i => i.kind === 'deadline').length, '#e0566b'], ['Plans running', items.filter(i => i.kind === 'activity').length, '#9b8cff'], ['Travel legs', items.filter(i => i.kind === 'travel').length, '#e3b04b']] });
     while (U.ymd(y, m, 1) <= b) {
       const [ma, mb] = U.mRange(y, m); const days = {};
       for (let d = ma; d <= mb; d = U.addDays(d, 1)) { if (d < a || d > b) continue; const its = L.itemsOn(items, d).sort((x, y) => (y.kind === 'activity') - (x.kind === 'activity')); if (its.length) days[d] = its.map(i => ({ cont: i.kind === 'activity' && L.isCont(i, d) && d !== a, t: (i.time ? i.time + ' ' : '') + i.title + (i.cancelled ? ' (cancelled)' : ''), k: i.kind, c: L.itemColor(i, 'category') })); }
@@ -178,7 +178,7 @@
         if (!A.Fin.canView()) throw new Error('Finance reports are only available to the Finance & Fundraising team and the choir leadership.');
         const F = A.Fin, sm = F.summary(), t = sm.totals, fmt = F.fmt;
         M.title = 'Finance report'; M.subtitle = 'As of ' + U.fmtD(U.today()); M.landscape = o.orient === 'landscape';
-        B.push({ stats: [['Total balance', U.num(t.total), '#2fb36a'], ['Cash in hand', U.num(t.cash), '#14a89b'], ['Bank & mobile', U.num(t.bank), '#6c6cf0'], ['Net this month', U.num(sm.inc - sm.exp), sm.inc - sm.exp >= 0 ? '#2fb36a' : '#e0566b']] });
+        B.push({ stats: [['Total balance', U.num(t.total), '#C9922E'], ['Cash in hand', U.num(t.cash), '#14a89b'], ['Bank & mobile', U.num(t.bank), '#6c6cf0'], ['Net this month', U.num(sm.inc - sm.exp), sm.inc - sm.exp >= 0 ? '#C9922E' : '#e0566b']] });
         B.push({ h: 'Income and expenses, last 6 months' }, { table: { head: ['Month', 'Income', 'Expenses', 'Net'], body: sm.months.map(([m, i, e]) => [U.MONTHS[+m.slice(5) - 1] + ' ' + m.slice(0, 4), fmt(i), fmt(e), fmt(i - e)]) } });
         B.push({ h: 'Membership fees, ' + U.MONTHS[+sm.cur.slice(5) - 1] + ' ' + sm.cur.slice(0, 4) }, { kv: [['Expected', fmt(sm.feeExpected)], ['Collected', fmt(sm.feeCollected)], ['Outstanding', fmt(Math.max(0, sm.feeExpected - sm.feeCollected))]] });
         B.push({ h: 'Fundraising & contributions' }, { table: { head: ['Contribution', 'Target', 'Collected', 'Outstanding', '% complete', 'Deadline'], body: sm.contribs.map(([c, col]) => [c.name, fmt(c.target), fmt(col), fmt(Math.max(0, (+c.target || 0) - col)), (c.target ? Math.min(100, Math.round(col / c.target * 100)) : 0) + '%', U.fmtD(c.deadline)]) }, empty: 'No contributions recorded.' });
@@ -195,7 +195,7 @@
         const dir = t.dir === 'return' ? 'Return' : t.dir === 'other' ? 'Travel' : 'Outbound';
         M.title = 'Seating plan: ' + (e.title || 'Travel'); M.subtitle = `${dir} · ${t.from || '?'} → ${t.to || '?'} · ${U.fmtD(t.departDate)} ${t.departTime || ''}`; M.landscape = o.orient === 'landscape';
         const nm = (id) => (St.get('members', id) || {}).name || '(removed member)'; const sec = (id) => ((St.get('members', id) || {}).sections || [])[0] || '';
-        B.push({ stats: [['Travellers', (t.travelers || []).length, '#6c6cf0'], ['Vehicles', stx.vehicles, '#14a89b'], ['Seats', stx.cap, '#e3b04b'], ['Seated', stx.used, '#2fb36a'], ['Without seat', stx.unseated.length, stx.unseated.length ? '#e0566b' : '#2fb36a']] });
+        B.push({ stats: [['Travellers', (t.travelers || []).length, '#6c6cf0'], ['Vehicles', stx.vehicles, '#14a89b'], ['Seats', stx.cap, '#e3b04b'], ['Seated', stx.used, '#C9922E'], ['Without seat', stx.unseated.length, stx.unseated.length ? '#e0566b' : '#C9922E']] });
         B.push({ kv: [['Event', `${e.title || '-'}${e.code ? ' (' + e.code + ')' : ''}`], ['Leg', `${dir}: ${t.from || '?'} → ${t.to || '?'}`], ['Departure (EAT)', `${U.fmtD(t.departDate)} ${t.departTime || '(time missing)'}`], ['Arrival (EAT)', t.arriveDate ? `${U.fmtD(t.arriveDate)} ${t.arriveTime || ''}` : '-'], ['Travel type', t.mode || '-'], ['Provider', t.provider || '-'], ['Booking reference', t.booking || '(none entered)'], ['Arrangement', t.confirmed ? 'Confirmed with provider' : 'UNCONFIRMED'], ['Coordinator', L.memberName(t.coordinatorId)]] });
         if (!(t.vehicles || []).length) B.push({ p: 'No vehicles or seats have been set up for this leg yet.' });
         (t.vehicles || []).forEach((v, i) => {
@@ -215,7 +215,7 @@
         const tgt = L.planTargetDate(p); M.title = 'Song practice planner: ' + p.name; M.subtitle = (tgt ? 'Performance ' + U.fmtD(tgt) : 'Practice plan') + ' · ' + ss.length + ' sessions'; M.landscape = o.orient !== 'portrait';
         const songs = L.planSongIds(p); const warm = p.warmupMin ?? 10;
         const colorOf = (s) => { const sr = St.get('series', s.seriesId); const sl = sr && St.get('slots', sr.slotId); return sl ? L.slotColor(sl) : L.planColor(p.id); };
-        B.push({ stats: [['Sessions', ss.length, L.planColor(p.id)], ['Practice hours', (ss.reduce((t, s) => t + (L.sessNet(s) || 0), 0) / 60).toFixed(1), '#14a89b'], ['Songs', songs.length, '#6c6cf0'], ['Song-practices', ss.reduce((t, s) => t + L.sessAssign(s.id).length, 0), '#e0713a'], ['Ready', songs.filter(id => L.stage(p.id, id) === 'ready').length, '#2fb36a']] });
+        B.push({ stats: [['Sessions', ss.length, L.planColor(p.id)], ['Practice hours', (ss.reduce((t, s) => t + (L.sessNet(s) || 0), 0) / 60).toFixed(1), '#14a89b'], ['Songs', songs.length, '#6c6cf0'], ['Song-practices', ss.reduce((t, s) => t + L.sessAssign(s.id).length, 0), '#e0713a'], ['Ready', songs.filter(id => L.stage(p.id, id) === 'ready').length, '#C9922E']] });
         const chunks = []; for (let i = 0; i < ss.length; i += 16) chunks.push(ss.slice(i, i + 16));
         chunks.forEach((ch, ci) => B.push({ h: 'When to practise each song' + (chunks.length > 1 ? ` (${ci + 1}/${chunks.length})` : '') }, { matrix: { cols: ch.map(s => ({ label: U.fmtDs(s.date), sub: s.start, color: colorOf(s) })), rows: songs.map(id => ({ label: L.songTitle(id), cells: ch.map(s => L.sessAssign(s.id).some(a2 => a2.songId === id)), total: ss.filter(s => L.sessAssign(s.id).some(a2 => a2.songId === id)).length })) } }));
         B.push({ h: 'Session run sheets' }, { p: `Each session starts with a ${warm}-minute warm-up. Harder songs come first, there's a break at the midpoint, and remaining time goes to revision and full run-throughs. Times are planning estimates.` });
@@ -226,7 +226,7 @@
         const p = St.get('plans', o.planId); const fz = L.feasibility(p); const m = fz.m; const ev = p.eventId && St.get('events', p.eventId);
         M.title = 'Event preparation plan: ' + (ev ? ev.title : p.name); M.subtitle = fz.tgt ? 'Performance ' + U.fmtD(fz.tgt) : 'No performance date';
         B.push({ kv: [['Practice plan', p.name], ['Performance date', fz.tgt ? U.fmtD(fz.tgt) : '-'], ['Preparation period', `${U.fmtD(p.start)} - ${fz.tgt ? U.fmtD(fz.tgt) : '-'}`], ['Plan owner', L.memberName(p.ownerId)], ['Sessions (eligible / completed / cancelled)', `${m.sessions} / ${m.completed} / ${m.cancelled}`], ['Practice days', m.practiceDays], ['Planned hours', (m.plannedMin / 60).toFixed(1)], ['Actual hours', m.actualMin == null ? 'no data' : (m.actualMin / 60).toFixed(1)], ['Unique songs / ready', `${m.unique} / ${m.ready}`], ['Remaining sessions before performance', m.beforeEvent], ['Estimated remaining workload', `${(m.workMin / 60).toFixed(1)} h vs ${(fz.usableMin / 60).toFixed(1)} h usable`], ['Assessment (estimate)', fz.tgt ? (fz.ok ? 'Current schedule appears sufficient' : 'Current schedule appears insufficient') : '-']] });
-        B.unshift({ stats: [['Days left', fz.calDays == null ? '-' : fz.calDays, '#6c6cf0'], ['Sessions left', m.beforeEvent, '#2fb36a'], ['Planned hours', (m.plannedMin / 60).toFixed(1), '#14a89b'], ['Songs ready', `${m.ready}/${m.unique}`, '#e0713a'], ['Workload left (h)', (m.workMin / 60).toFixed(1), fz.ok ? '#2fb36a' : '#e0566b']] });
+        B.unshift({ stats: [['Days left', fz.calDays == null ? '-' : fz.calDays, '#6c6cf0'], ['Sessions left', m.beforeEvent, '#C9922E'], ['Planned hours', (m.plannedMin / 60).toFixed(1), '#14a89b'], ['Songs ready', `${m.ready}/${m.unique}`, '#e0713a'], ['Workload left (h)', (m.workMin / 60).toFixed(1), fz.ok ? '#C9922E' : '#e0566b']] });
         if (fz.tips.length) B.push({ p: 'Suggestions: ' + fz.tips.join(' ') });
         B.push({ h: 'Required songs and readiness' }, { table: { head: ['Song', 'Difficulty', 'Readiness', 'Est. sessions x min', 'Practised / planned', 'Target date'], body: m.songs.map(id => { const e = L.songEst(p.id, id); const tl = L.songTimeline(p.id, id).filter(x => x.s.status !== 'cancelled'); return [L.songTitle(id), (St.get('songs', id) || {}).difficulty || 'moderate', L.label(L.STAGES, L.stage(p.id, id)), `${e.sessions} x ${e.min}`, `${tl.filter(x => x.a.done).length} / ${tl.length}`, (L.readiness(p.id, id) || {}).targetDate ? U.fmtDs(L.readiness(p.id, id).targetDate) : '-']; }) }, empty: 'No songs in the plan.' });
         const ss = L.planSessions(p.id);
@@ -256,33 +256,33 @@
 
   // ---------- HTML preview ----------
   P.preview = (M, cfg) => {
-    const hdr = `<div class="hdr"><div><b style="font-size:13px">${esc(cfg.name || 'Choir')}</b><div style="font-size:9px;color:#5c6b67">${esc(cfg.church || '')}</div></div><div style="text-align:right"><b style="font-size:12px">${esc(M.title)}</b><div style="font-size:9px;color:#5c6b67">${esc(M.subtitle)}</div></div></div>`;
+    const hdr = `<div class="hdr"><div><b style="font-size:13px">${esc(cfg.name || 'Choir')}</b><div style="font-size:9px;color:#5A6F8E">${esc(cfg.church || '')}</div></div><div style="text-align:right"><b style="font-size:12px">${esc(M.title)}</b><div style="font-size:9px;color:#5A6F8E">${esc(M.subtitle)}</div></div></div>`;
     let html = '';
-    if (M.cover) { const [main, rest] = splitTitle(M.title); const w = main.split(' '); const st = M.blocks.find(b => b.stats); html += `<div class="page cover ${M.landscape ? 'land' : ''}"><div style="font-size:12px;opacity:.8;position:relative;z-index:1">${esc(cfg.name || 'Choir')} · ${esc(cfg.church || '')}</div><h4 style="position:relative;z-index:1">${esc(w.slice(0, -1).join(' ') || main)}<br><em>${esc(w.length > 1 ? w[w.length - 1] : '')}</em></h4><div style="font-size:15px;position:relative;z-index:1">${esc(rest || M.subtitle)}</div>${rest ? `<div style="opacity:.75;margin-top:4px">${esc(M.subtitle)}</div>` : ''}${st ? `<div style="display:flex;gap:10px;margin-top:40px;flex-wrap:wrap">${st.stats.slice(0, 3).map(x => `<div style="border:1px solid #2fb36a;border-radius:10px;padding:8px 12px"><b style="font-size:18px">${esc(x[1])}</b><div style="font-size:9px;opacity:.8">${esc(x[0])}</div></div>`).join('')}</div>` : ''}</div>`; }
+    if (M.cover) { const [main, rest] = splitTitle(M.title); const w = main.split(' '); const st = M.blocks.find(b => b.stats); html += `<div class="page cover ${M.landscape ? 'land' : ''}"><div style="font-size:12px;opacity:.8;position:relative;z-index:1">${esc(cfg.name || 'Choir')} · ${esc(cfg.church || '')}</div><h4 style="position:relative;z-index:1">${esc(w.slice(0, -1).join(' ') || main)}<br><em>${esc(w.length > 1 ? w[w.length - 1] : '')}</em></h4><div style="font-size:15px;position:relative;z-index:1">${esc(rest || M.subtitle)}</div>${rest ? `<div style="opacity:.75;margin-top:4px">${esc(M.subtitle)}</div>` : ''}${st ? `<div style="display:flex;gap:10px;margin-top:40px;flex-wrap:wrap">${st.stats.slice(0, 3).map(x => `<div style="border:1px solid #C9922E;border-radius:10px;padding:8px 12px"><b style="font-size:18px">${esc(x[1])}</b><div style="font-size:9px;opacity:.8">${esc(x[0])}</div></div>`).join('')}</div>` : ''}</div>`; }
     html += `<div class="page ${M.landscape ? 'land' : ''}">${hdr}`;
     M.blocks.forEach(b => {
       if (b.h) html += `<h5>${esc(b.h)}</h5>`;
-      if (b.p) html += `<p style="color:#3d4a47">${esc(b.p)}</p>`;
-      if (b.stats) html += `<div class="tiles">${b.stats.map(x => `<div style="--c:${esc(x[2] || '#2fb36a')}"><b>${esc(x[1])}</b><span>${esc(x[0])}</span></div>`).join('')}</div>`;
-      if (b.kv) html += `<table>${b.kv.map(([k, v]) => `<tr><td style="width:30%;font-weight:700;color:#5c6b67">${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
+      if (b.p) html += `<p style="color:#33445E">${esc(b.p)}</p>`;
+      if (b.stats) html += `<div class="tiles">${b.stats.map(x => `<div style="--c:${esc(x[2] || '#C9922E')}"><b>${esc(x[1])}</b><span>${esc(x[0])}</span></div>`).join('')}</div>`;
+      if (b.kv) html += `<table>${b.kv.map(([k, v]) => `<tr><td style="width:30%;font-weight:700;color:#5A6F8E">${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`;
       if (b.table) html += b.table.body.length ? `<table><tr>${b.table.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr>${b.table.body.slice(0, 60).map((r, i) => `<tr>${r.map((c, j) => `<td style="${j === 0 && b.table.colors ? 'border-left:3px solid ' + esc(b.table.colors[i]) : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</table>${b.table.body.length > 60 ? `<p><i>…${b.table.body.length - 60} more rows in the PDF</i></p>` : ''}` : `<p><i>${esc(b.empty || 'No data.')}</i></p>`;
-      if (b.legend) html += `<p style="font-size:9px;color:#5c6b67">Colors follow each event's category, practice plan and department.</p>`;
-      if (b.matrix) html += `<table style="border-collapse:separate;border-spacing:2px"><tr><th style="background:none;color:#13221f">Song</th>${b.matrix.cols.map(c => `<th style="background:${esc(c.color)};text-align:center;font-size:8px">${esc(c.label)}</th>`).join('')}</tr>${b.matrix.rows.map(r => { let n = 0; return `<tr><td style="background:none">${esc(r.label)} <span style="color:#5c6b67">${r.total}x</span></td>${r.cells.map((on, i) => `<td style="text-align:center;border-radius:4px;background:${on ? esc(b.matrix.cols[i].color) : '#f2f6f5'};color:#fff;font-weight:700">${on ? ++n : ''}</td>`).join('')}</tr>`; }).join('')}</table>`;
-      if (b.pagebreak) html += '<hr style="border:0;border-top:1px dashed #cfd8d5;margin:16px 0">';
-      if (b.seatmap) html += `<div style="display:grid;grid-template-columns:repeat(${b.seatmap.cols},minmax(38px,60px));gap:4px;justify-content:center;border:2px solid #e2e8e6;border-radius:20px 20px 10px 10px;padding:12px;width:max-content;margin:6px auto">${b.seatmap.grid.map(r => r.map(c => c.t === 'seat' ? `<div style="border-radius:6px;padding:3px;min-height:30px;font-size:8px;text-align:center;background:${c.name ? 'color-mix(in srgb,' + esc(c.color) + ' 25%,#fff)' : '#f2f6f5'};border:1px solid ${c.name ? esc(c.color) : '#e2e8e6'}"><b>${esc(c.no)}</b><br>${esc(c.name ? c.name.split(' ')[0] : '')}</div>` : c.t === 'driver' ? '<div style="border:1px dashed #5c6b67;border-radius:50%;font-size:8px;display:grid;place-items:center">Driver</div>' : '<div></div>').join('')).join('')}</div>`;
-      if (b.sheets) html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">${b.sheets.slice(0, 12).map(sh => `<div style="border:1px solid #e2e8e6;border-top:4px solid ${esc(sh.color)};border-radius:8px;padding:6px 8px"><b>${esc(sh.title)}</b><div style="color:#5c6b67;font-size:9px">${esc(sh.sub)}</div>${sh.rows.map(r => `<div style="display:flex;gap:6px;font-size:9px"><span style="color:#5c6b67;min-width:62px">${esc(r[0])}</span><span style="${r[2] === 'song' ? 'font-weight:700' : ''}">${esc(r[1])}</span></div>`).join('')}</div>`).join('')}</div>`;
+      if (b.legend) html += `<p style="font-size:9px;color:#5A6F8E">Colors follow each event's category, practice plan and department.</p>`;
+      if (b.matrix) html += `<table style="border-collapse:separate;border-spacing:2px"><tr><th style="background:none;color:#1A3358">Song</th>${b.matrix.cols.map(c => `<th style="background:${esc(c.color)};text-align:center;font-size:8px">${esc(c.label)}</th>`).join('')}</tr>${b.matrix.rows.map(r => { let n = 0; return `<tr><td style="background:none">${esc(r.label)} <span style="color:#5A6F8E">${r.total}x</span></td>${r.cells.map((on, i) => `<td style="text-align:center;border-radius:4px;background:${on ? esc(b.matrix.cols[i].color) : '#F2F5FA'};color:#fff;font-weight:700">${on ? ++n : ''}</td>`).join('')}</tr>`; }).join('')}</table>`;
+      if (b.pagebreak) html += '<hr style="border:0;border-top:1px dashed #CFD8E6;margin:16px 0">';
+      if (b.seatmap) html += `<div style="display:grid;grid-template-columns:repeat(${b.seatmap.cols},minmax(38px,60px));gap:4px;justify-content:center;border:2px solid #E3E9F2;border-radius:20px 20px 10px 10px;padding:12px;width:max-content;margin:6px auto">${b.seatmap.grid.map(r => r.map(c => c.t === 'seat' ? `<div style="border-radius:6px;padding:3px;min-height:30px;font-size:8px;text-align:center;background:${c.name ? 'color-mix(in srgb,' + esc(c.color) + ' 25%,#fff)' : '#F2F5FA'};border:1px solid ${c.name ? esc(c.color) : '#E3E9F2'}"><b>${esc(c.no)}</b><br>${esc(c.name ? c.name.split(' ')[0] : '')}</div>` : c.t === 'driver' ? '<div style="border:1px dashed #5A6F8E;border-radius:50%;font-size:8px;display:grid;place-items:center">Driver</div>' : '<div></div>').join('')).join('')}</div>`;
+      if (b.sheets) html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">${b.sheets.slice(0, 12).map(sh => `<div style="border:1px solid #E3E9F2;border-top:4px solid ${esc(sh.color)};border-radius:8px;padding:6px 8px"><b>${esc(sh.title)}</b><div style="color:#5A6F8E;font-size:9px">${esc(sh.sub)}</div>${sh.rows.map(r => `<div style="display:flex;gap:6px;font-size:9px"><span style="color:#5A6F8E;min-width:62px">${esc(r[0])}</span><span style="${r[2] === 'song' ? 'font-weight:700' : ''}">${esc(r[1])}</span></div>`).join('')}</div>`).join('')}</div>`;
       if (b.cal) {
         const { y, m, days } = b.cal; const first = U.ymd(y, m, 1); const lead = (U.dow(first) + 6) % 7; const n = U.daysInMonth(y, m);
-        html += `<h5>${U.MONTHS[m - 1]} ${y}</h5><div class="cg">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="h">${d}</div>`).join('')}${'<div></div>'.repeat(lead)}${Array.from({ length: n }, (_, i) => { const d = U.ymd(y, m, i + 1); const its = days[d] || []; return `<div class="c"><b>${i + 1}</b>${its.slice(0, 4).map(x => x.cont ? `<span class="it" style="--c:${esc(x.c)};height:4px;padding:0;font-size:0">.</span>` : `<span class="it" style="--c:${esc(x.c)}">${esc(x.t)}</span>`).join('')}${its.length > 4 ? `<span style="color:#5c6b67">+${its.length - 4} more</span>` : ''}</div>`; }).join('')}</div>`;
+        html += `<h5>${U.MONTHS[m - 1]} ${y}</h5><div class="cg">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="h">${d}</div>`).join('')}${'<div></div>'.repeat(lead)}${Array.from({ length: n }, (_, i) => { const d = U.ymd(y, m, i + 1); const its = days[d] || []; return `<div class="c"><b>${i + 1}</b>${its.slice(0, 4).map(x => x.cont ? `<span class="it" style="--c:${esc(x.c)};height:4px;padding:0;font-size:0">.</span>` : `<span class="it" style="--c:${esc(x.c)}">${esc(x.t)}</span>`).join('')}${its.length > 4 ? `<span style="color:#5A6F8E">+${its.length - 4} more</span>` : ''}</div>`; }).join('')}</div>`;
       }
     });
-    html += `<p style="margin-top:14px;font-size:8px;color:#5c6b67">Generated ${U.stamp()} · Page numbers are added in the PDF</p></div>`;
+    html += `<p style="margin-top:14px;font-size:8px;color:#5A6F8E">Generated ${U.stamp()} · Page numbers are added in the PDF</p></div>`;
     return html;
   };
   function splitTitle(t) { const i = t.indexOf(':'); return i > 0 ? [t.slice(0, i).trim(), t.slice(i + 1).trim()] : [t, '']; }
 
   // ---------- jsPDF renderer (modern layout, embedded Plus Jakarta Sans) ----------
-  const INK = [19, 34, 31], GREEN = [47, 179, 106], MUTED = [92, 107, 103], SOFT = [242, 246, 245], LINE = [226, 232, 230], WHITE = [255, 255, 255];
+  const INK = [26, 51, 88], GREEN = [201, 146, 46], MUTED = [90, 111, 142], SOFT = [242, 245, 250], LINE = [226, 232, 242], WHITE = [255, 255, 255];
   let FONT = 'helvetica', XB = 'helvetica';
   const cleanAscii = (s) => String(s == null ? '' : s).replace(/[→⇒]/g, '->').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...').replace(/[•·]/g, '-').replace(/♭/g, 'b').replace(/♯/g, '#').replace(/×/g, 'x').replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g, '');
   const cleanU = (s) => String(s == null ? '' : s).replace(/♭/g, 'b').replace(/♯/g, '#').replace(/[☀-➿-]|[\uD800-\uDFFF]/g, '');
@@ -319,19 +319,19 @@
       doc.setDrawColor(...GREEN); doc.setLineWidth(1); doc.circle(W - 40, 40, 190, 'S'); doc.setLineWidth(.6); doc.circle(30, H + 20, 160, 'S'); doc.circle(30, H + 20, 120, 'S');
       doc.setFillColor(...GREEN); for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) doc.circle(mg + i * 9, 40 + j * 9, 1.1, 'F');
       if (img) { try { doc.addImage(img, img.includes('png') ? 'PNG' : 'JPEG', mg, 82, 46, 46); } catch (e) { /* skip */ } }
-      F('b', 11, [190, 214, 205]); doc.text(clean((cfg.name || 'Choir') + (cfg.church ? '  ·  ' + cfg.church : '')), mg, img ? 148 : 100);
+      F('b', 11, [200, 212, 230]); doc.text(clean((cfg.name || 'Choir') + (cfg.church ? '  ·  ' + cfg.church : '')), mg, img ? 148 : 100);
       const [main, rest] = splitTitle(M.title); const words = clean(main).split(' ');
       const l1 = words.slice(0, -1).join(' ') || words[0], l2 = words.length > 1 ? words[words.length - 1] : '';
       const big = M.landscape ? 54 : 50; let ty = H * (M.landscape ? .42 : .38);
       F('x', big, WHITE); doc.text(doc.splitTextToSize(l1, W - 2 * mg - 40), mg, ty); ty += big * (doc.splitTextToSize(l1, W - 2 * mg - 40).length) * 1.0;
       if (l2) { F('x', big, GREEN); doc.text(l2, mg, ty); ty += big * .95; }
       F('normal', 16, WHITE); if (rest) { doc.text(doc.splitTextToSize(clean(rest), W - 2 * mg), mg, ty + 6); ty += 24 * doc.splitTextToSize(clean(rest), W - 2 * mg).length; }
-      F('normal', 13, [190, 214, 205]); doc.text(clean(M.subtitle), mg, ty + 12);
+      F('normal', 13, [200, 212, 230]); doc.text(clean(M.subtitle), mg, ty + 12);
       doc.setDrawColor(...GREEN); doc.setLineWidth(1.4); doc.line(mg, ty + 30, mg + 70, ty + 30);
-      if (cfg.theme) { F('normal', 11, [190, 214, 205]); doc.text(clean('Theme: ' + cfg.theme), mg, ty + 50); }
+      if (cfg.theme) { F('normal', 11, [200, 212, 230]); doc.text(clean('Theme: ' + cfg.theme), mg, ty + 50); }
       const st = M.blocks.find(b => b.stats);
-      if (st) { const n = Math.min(3, st.stats.length); const bw = (W - 2 * mg - (n - 1) * 14) / n; st.stats.slice(0, n).forEach((x, i) => { const bx = mg + i * (bw + 14), by = H - 150; doc.setDrawColor(...GREEN); doc.setLineWidth(.8); doc.roundedRect(bx, by, bw, 62, 10, 10, 'S'); F('x', 22, WHITE); doc.text(clean(String(x[1])), bx + 16, by + 32); F('normal', 9.5, [190, 214, 205]); doc.text(clean(x[0]), bx + 16, by + 48); }); }
-      F('normal', 8.5, [150, 175, 166]); doc.text(clean('Generated ' + U.stamp()), mg, H - 40);
+      if (st) { const n = Math.min(3, st.stats.length); const bw = (W - 2 * mg - (n - 1) * 14) / n; st.stats.slice(0, n).forEach((x, i) => { const bx = mg + i * (bw + 14), by = H - 150; doc.setDrawColor(...GREEN); doc.setLineWidth(.8); doc.roundedRect(bx, by, bw, 62, 10, 10, 'S'); F('x', 22, WHITE); doc.text(clean(String(x[1])), bx + 16, by + 32); F('normal', 9.5, [200, 212, 230]); doc.text(clean(x[0]), bx + 16, by + 48); }); }
+      F('normal', 8.5, [150, 170, 200]); doc.text(clean('Generated ' + U.stamp()), mg, H - 40);
       doc.addPage();
     }
     const startPage = doc.getNumberOfPages();
@@ -339,10 +339,10 @@
     for (const b of M.blocks) {
       i++; if (onProgress && i % 4 === 0) { onProgress(i / M.blocks.length); await new Promise(r => setTimeout(r, 0)); }
       if (b.h) { ensure(46); y += 6; doc.setFillColor(...GREEN); doc.roundedRect(mg, y + 1, 4, 14, 2, 2, 'F'); F('x', 13, INK); doc.text(clean(b.h), mg + 12, y + 12.5); y += 24; }
-      if (b.p) { F('normal', 9, [61, 74, 71]); const lines = doc.splitTextToSize(clean(b.p), W - 2 * mg); for (const ln of lines) { ensure(13); doc.text(ln, mg, y + 9); y += 13; } y += 5; }
+      if (b.p) { F('normal', 9, [50, 66, 92]); const lines = doc.splitTextToSize(clean(b.p), W - 2 * mg); for (const ln of lines) { ensure(13); doc.text(ln, mg, y + 9); y += 13; } y += 5; }
       if (b.stats) {
         const n = b.stats.length; const gap = 10; const bw = (W - 2 * mg - (n - 1) * gap) / n; ensure(62);
-        b.stats.forEach((x, k) => { const bx = mg + k * (bw + gap); doc.setFillColor(...SOFT); doc.roundedRect(bx, y, bw, 52, 9, 9, 'F'); doc.setFillColor(...hex(x[2] || '#2fb36a')); doc.roundedRect(bx, y + 10, 4, 32, 2, 2, 'F'); F('x', 17, INK); doc.text(clean(String(x[1])), bx + 14, y + 25); F('normal', 8, MUTED); doc.text(doc.splitTextToSize(clean(x[0]), bw - 20)[0], bx + 14, y + 40); });
+        b.stats.forEach((x, k) => { const bx = mg + k * (bw + gap); doc.setFillColor(...SOFT); doc.roundedRect(bx, y, bw, 52, 9, 9, 'F'); doc.setFillColor(...hex(x[2] || '#C9922E')); doc.roundedRect(bx, y + 10, 4, 32, 2, 2, 'F'); F('x', 17, INK); doc.text(clean(String(x[1])), bx + 14, y + 25); F('normal', 8, MUTED); doc.text(doc.splitTextToSize(clean(x[0]), bw - 20)[0], bx + 14, y + 40); });
         y += 66;
       }
       if (b.kv) { doc.autoTable({ startY: y, margin: { left: mg, right: mg, top, bottom: bot }, body: b.kv.map(([k, v]) => [clean(k), clean(v)]), theme: 'plain', styles: { font: FONT, fontSize: 9, cellPadding: { top: 4, bottom: 4, left: 6, right: 6 }, overflow: 'linebreak', valign: 'top', textColor: INK }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 170, textColor: MUTED } }, alternateRowStyles: { fillColor: SOFT } }); y = doc.lastAutoTable.finalY + 12; }
@@ -394,14 +394,14 @@
       if (idx < 1 || idx > n) continue;
       const d = U.ymd(yr, m, idx); const outRange = d < from || d > to; const its = days[d] || [];
       doc.setFillColor(...(outRange ? [249, 250, 250] : SOFT)); doc.roundedRect(cx, cy, cw, ch, 6, 6, 'F');
-      F('b', 8.5, outRange ? [180, 188, 186] : INK); doc.text(String(idx), cx + 6, cy + 12);
+      F('b', 8.5, outRange ? [180, 188, 200] : INK); doc.text(String(idx), cx + 6, cy + 12);
       if (U.dow(d) === 0 || U.dow(d) === 6) { doc.setFillColor(...GREEN); doc.circle(cx + cw - 8, cy + 9, 1.4, 'F'); }
       F('normal', 6.4, INK);
       let ly = cy + 17; let shown = 0; const cap = maxLines - (its.length > maxLines ? 1 : 0);
       for (const it of its) {
         if (shown >= cap) break;
         if (it.cont) { doc.setFillColor(...L.tint(it.c || '#9b8cff', .45)); doc.roundedRect(cx + 3, ly + 1.5, cw - 6, 3.2, 1.6, 1.6, 'F'); ly += 5.5; shown++; continue; }
-        const col = hex(it.c || '#2fb36a'); doc.setFillColor(...L.tint(it.c || '#2fb36a', .2)); doc.roundedRect(cx + 3, ly, cw - 6, lineH - 1, 2, 2, 'F'); doc.setFillColor(...col); doc.roundedRect(cx + 3, ly, 2.4, lineH - 1, 1.2, 1.2, 'F');
+        const col = hex(it.c || '#C9922E'); doc.setFillColor(...L.tint(it.c || '#C9922E', .2)); doc.roundedRect(cx + 3, ly, cw - 6, lineH - 1, 2, 2, 'F'); doc.setFillColor(...col); doc.roundedRect(cx + 3, ly, 2.4, lineH - 1, 1.2, 1.2, 'F');
         let t = clean(it.t); doc.setTextColor(...INK); while (t.length > 1 && doc.getTextWidth(t) > cw - 13) t = t.slice(0, -2) + '…';
         doc.text(t, cx + 8, ly + lineH - 2.6); ly += lineH; shown++;
       }
@@ -421,10 +421,10 @@
       const cx = bx + k * (cw + gap), cy = y + r * (ch + gap);
       if (c.t === 'driver') { doc.setDrawColor(...MUTED); doc.setLineWidth(.8); doc.setLineDashPattern([2, 2], 0); doc.circle(cx + cw / 2, cy + ch / 2, Math.min(cw, ch) / 2 - 1, 'S'); doc.setLineDashPattern([], 0); F('b', 6.5, MUTED); doc.text('Driver', cx + cw / 2, cy + ch / 2 + 2, { align: 'center' }); return; }
       if (c.t !== 'seat') return;
-      if (c.name) { doc.setFillColor(...L.tint(c.color || '#2fb36a', .25)); doc.setDrawColor(...hex(c.color || '#2fb36a')); } else { doc.setFillColor(...SOFT); doc.setDrawColor(...LINE); }
+      if (c.name) { doc.setFillColor(...L.tint(c.color || '#C9922E', .25)); doc.setDrawColor(...hex(c.color || '#C9922E')); } else { doc.setFillColor(...SOFT); doc.setDrawColor(...LINE); }
       doc.setLineWidth(.8); doc.roundedRect(cx, cy, cw, ch, 5, 5, 'FD');
       F('b', 6.8, c.name ? INK : MUTED); doc.text(String(c.no), cx + 4, cy + 8.5);
-      let t = clean(c.name ? c.name.replace(/\(.*?\)/g, '').trim() : 'free'); F(c.name ? 'b' : 'normal', 6.4, c.name ? INK : [170, 180, 177]);
+      let t = clean(c.name ? c.name.replace(/\(.*?\)/g, '').trim() : 'free'); F(c.name ? 'b' : 'normal', 6.4, c.name ? INK : [170, 180, 196]);
       const lines = doc.splitTextToSize(t, cw - 6).slice(0, 2); lines.forEach((ln, i) => { let s2 = ln; while (s2.length > 1 && doc.getTextWidth(s2) > cw - 6) s2 = s2.slice(0, -2) + '…'; doc.text(s2, cx + cw / 2, cy + 17 + i * 7.5, { align: 'center' }); });
     }));
     C.y = y + th + 26;

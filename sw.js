@@ -1,6 +1,6 @@
 /* AIC Arusha Choir — service worker: makes the app installable, opens fast, and shows notifications.
    Always tries the network first so members get updates straight away. */
-const CACHE = 'aic-choir-v4';
+const CACHE = 'aic-choir-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

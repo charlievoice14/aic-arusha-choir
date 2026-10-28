@@ -6,13 +6,12 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AIC Choir">
-<meta name="theme-color" content="#080f0e">
+<meta name="theme-color" content="#12264A">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>AIC Arusha Choir</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>try{if(localStorage.getItem('aac_theme')==='light')document.documentElement.classList.add('light')}catch(e){}</script>
 <style>
 /* keep the app solid on phones: no zoom when typing, no double-tap zoom, no rubber-band bounce */
@@ -24,81 +23,88 @@ input,textarea,select{ font-size:16px !important; }
 #sync-dot[data-state="saving"]{background:#f5b942}
 #sync-dot[data-state="offline"]{background:#e5484d}
 
-  @font-face{font-family:"PJS Local";src:url(fonts/PJS-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
-  @font-face{font-family:"PJS Local";src:url(fonts/PJS-SemiBold.woff2) format("woff2");font-weight:600;font-display:swap}
-  @font-face{font-family:"PJS Local";src:url(fonts/PJS-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
-  @font-face{font-family:"PJS Local";src:url(fonts/PJS-ExtraBold.woff2) format("woff2");font-weight:800;font-display:swap}
-  /* Theme shared with the AAC Planner: dark "Evergreen" (default) and light "Pastel" */
+  @font-face{font-family:"Poppins";src:url(fonts/Poppins-400.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Poppins";src:url(fonts/Poppins-500.woff2) format("woff2");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"Poppins";src:url(fonts/Poppins-600.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
+  @font-face{font-family:"Poppins";src:url(fonts/Poppins-700.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:"Poppins";src:url(fonts/Poppins-800.woff2) format("woff2");font-weight:800;font-style:normal;font-display:swap}
+  /* Theme shared with the AAC Planner — "Aurum" navy glass (default) and "Frost" light */
   :root{
-    --f:"Plus Jakarta Sans","PJS Local",system-ui,-apple-system,"Segoe UI",sans-serif;
-    --primary:#2fb36a;
-    --primary-dark:#23955a;
-    --primary-soft:rgba(47,179,106,0.14);
-    --on-pri:#04130b;
-    --bg:#080f0e;
-    --bg-glow1:rgba(47,179,106,.20);
-    --bg-glow2:rgba(25,179,166,.12);
-    --card:#0f1918;
-    --card2:#15221f;
-    --text:#e8f1ed;
-    --text-soft:#8ea39c;
-    --text-faint:#5f746d;
-    --border:#1d2d29;
-    --gold:#e3b04b;
-    --gold-soft:rgba(227,176,75,0.15);
-    --blue:#4fb8e8;
-    --blue-soft:rgba(79,184,232,0.14);
-    --purple:#9b8cff;
-    --purple-soft:rgba(155,140,255,0.15);
-    --late:#f0b04a;
-    --late-bg:rgba(240,176,74,0.14);
-    --absent:#f2727e;
-    --absent-bg:rgba(242,114,126,0.14);
-    --present:#3fcf86;
-    --hero-a:#16573a;
-    --hero-b:#0f2a22;
-    --hero-tint:#bdf0d3;
-    --side-bg:rgba(11,20,19,.92);
-    --shadow:0 14px 40px rgba(0,0,0,.4);
-    --glow:0 0 0 1px rgba(140,210,180,.04) inset,0 10px 30px rgba(0,0,0,.35);
-    --radius:16px;
+    --f:"Poppins",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --primary:#F5B942;
+    --primary-dark:#D99B22;
+    --primary-soft:rgba(245,185,66,0.16);
+    --on-pri:#5A3B00;
+    --bg:#12264A;
+    --bg-a:#1F3D68;
+    --bg-b:#12264A;
+    --bg-c:#0F2140;
+    --card:#1B3459;
+    --card2:#223F68;
+    --glass:rgba(255,255,255,.075);
+    --glass2:rgba(255,255,255,.12);
+    --text:#F2F6FC;
+    --text-soft:#A9BAD3;
+    --text-faint:#7F93B2;
+    --border:rgba(255,255,255,.14);
+    --gold:#F5B942;
+    --gold-soft:rgba(245,185,66,0.16);
+    --blue:#8FB8F0;
+    --blue-soft:rgba(143,184,240,0.16);
+    --purple:#DDD7F8;
+    --purple-soft:rgba(221,215,248,0.16);
+    --late:#FFA95C;
+    --late-bg:rgba(255,169,92,0.15);
+    --absent:#FF8080;
+    --absent-bg:rgba(255,128,128,0.15);
+    --present:#45D3A0;
+    --hero-a:#34608F;
+    --hero-b:#1C3963;
+    --hero-tint:#F7D27A;
+    --side-bg:rgba(18,38,74,.82);
+    --shadow:0 18px 40px -18px rgba(5,18,40,.55);
+    --glow:0 18px 40px -18px rgba(5,18,40,.55);
+    --radius:22px;
     color-scheme:dark;
   }
   :root.light{
-    --primary:#3f7a70;
-    --primary-dark:#2f625a;
-    --primary-soft:#dfece9;
+    --primary:#1F3D68;
+    --primary-dark:#10284A;
+    --primary-soft:#DCE6F3;
     --on-pri:#ffffff;
-    --bg:#ebe8e4;
-    --bg-glow1:rgba(232,196,176,.35);
-    --bg-glow2:rgba(185,207,211,.40);
+    --bg:#E6EDF6;
+    --bg-a:#EEF3F9;
+    --bg-b:#E6EDF6;
+    --bg-c:#D6E0EE;
     --card:#ffffff;
-    --card2:#f4f1ed;
-    --text:#2a2d30;
-    --text-soft:#6f7275;
-    --text-faint:#9a9c9f;
-    --border:#e3ded8;
-    --gold:#b07a12;
-    --gold-soft:#f6e5da;
-    --blue:#3b6f95;
-    --blue-soft:#dde9f1;
-    --purple:#7a4fc9;
-    --purple-soft:#ebe3f6;
-    --late:#9a6411;
-    --late-bg:#f7ead2;
-    --absent:#b0414c;
-    --absent-bg:#f6dfe1;
-    --present:#2f7d55;
-    --hero-a:#3f7a70;
-    --hero-b:#2f5f58;
-    --hero-tint:#dff1ea;
-    --side-bg:#ffffff;
-    --shadow:0 10px 30px rgba(60,50,40,.08);
-    --glow:0 1px 2px rgba(60,50,40,.04),0 8px 24px rgba(60,50,40,.06);
+    --card2:#EEF3F9;
+    --glass:#ffffff;
+    --glass2:#EEF3F9;
+    --text:#10284A;
+    --text-soft:#5A6F8E;
+    --text-faint:#8B9BB4;
+    --border:#D3DCEA;
+    --gold:#B07A12;
+    --gold-soft:#FBEFD5;
+    --blue:#2B5F9E;
+    --blue-soft:#DCE8F6;
+    --purple:#4B3FA0;
+    --purple-soft:#E7E3FA;
+    --late:#B5650F;
+    --late-bg:#FBE9D6;
+    --absent:#B23A3A;
+    --absent-bg:#F8E0E0;
+    --present:#138A5E;
+    --hero-a:#2B4F7E;
+    --hero-b:#1A3358;
+    --hero-tint:#F7D27A;
+    --side-bg:rgba(255,255,255,.88);
+    --shadow:0 14px 34px -16px rgba(16,40,74,.25);
+    --glow:0 10px 28px -16px rgba(16,40,74,.22);
     color-scheme:light;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:var(--f);background:radial-gradient(900px 520px at 100% -8%,var(--bg-glow1),transparent 62%),radial-gradient(800px 480px at -10% 105%,var(--bg-glow2),transparent 60%),var(--bg);background-attachment:fixed;color:var(--text);-webkit-font-smoothing:antialiased;}
+  body{margin:0;font-family:var(--f);background:linear-gradient(160deg,var(--bg-a) 0%,var(--bg-b) 45%,var(--bg-c) 100%) fixed;background-color:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
   .phone{max-width:420px;margin:0 auto;min-height:100vh;background:transparent;position:relative;padding-bottom:82px;}
   body.logged-out .phone{padding-bottom:24px;}
   body.logged-out .search-bar{display:none;}
@@ -797,6 +803,24 @@ input,textarea,select{ font-size:16px !important; }
     .mcard-list .mcard{margin:0}
     .sl-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:4px 18px;}
   }
+
+  /* ---------- Aurum look: glass cards, rounded pills, floating nav ---------- */
+  .card,.mcard,.modal-box{background:var(--glass);border-color:var(--border);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+  .modal-box{background:var(--card)}
+  .card,.mcard{border-radius:var(--radius)}
+  header.appbar{background:color-mix(in srgb,var(--bg-a) 78%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid var(--border)}
+  .icon-btn{background:var(--glass2);border-color:var(--border)}
+  .search-bar{background:color-mix(in srgb,var(--card) 70%,transparent);border-color:var(--border);border-radius:14px}
+  button.btn{border-radius:14px;font-weight:600}
+  button.btn:not(.ghost):not(.small):not(.danger){box-shadow:0 8px 18px -8px color-mix(in srgb,var(--primary) 70%,transparent)}
+  .chip{border-radius:999px}
+  nav.bottomnav{background:color-mix(in srgb,var(--bg-b) 84%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--border);border-radius:22px 22px 0 0}
+  :root.light nav.bottomnav{background:rgba(255,255,255,.9)}
+  .banner{border:1px solid rgba(255,255,255,.18);box-shadow:var(--shadow)}
+  .banner .bbtn.solid{background:#F5B942;color:#5A3B00}
+  .banner .eyebrow{color:var(--hero-tint)}
+  h1,h2,h3{font-weight:600;letter-spacing:-.01em}
+  .stat-strip .num{font-weight:600}
 </style>
 </head>
 <body>
@@ -3411,7 +3435,7 @@ function openPlanner(){
 function setTheme(light){
   document.documentElement.classList.toggle('light', light);
   try{ localStorage.setItem('aac_theme', light ? 'light' : 'dark'); }catch(e){}
-  const m = document.querySelector('meta[name=theme-color]'); if(m) m.content = light ? '#ebe8e4' : '#080f0e';
+  const m = document.querySelector('meta[name=theme-color]'); if(m) m.content = light ? '#E6EDF6' : '#12264A';
 }
 function toggleTheme(){ setTheme(!document.documentElement.classList.contains('light')); }
 document.addEventListener('click', (e)=>{
@@ -3876,7 +3900,7 @@ function youTubeId(raw){
   return null;
 }
 function isDirectAudio(raw){ try{ return /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)(\?|#|$)/i.test(new URL(cleanLink(raw)).pathname); }catch(e){ return false; } }
-const ART_TONES = [['#0f6f66','#1fb5a5'],['#2e2398','#5a4ff0'],['#a9471b','#ef7d3e'],['#951f61','#e2489d'],['#23955a','#2fb36a']];
+const ART_TONES = [['#2B4F7E','#5B86C0'],['#C9922E','#F7D27A'],['#1f8f6b','#45D3A0'],['#4B3FA0','#9D93F0'],['#A8485E','#FF8080']];
 function songArt(s, cls){
   const yt = s.audioUrl ? youTubeId(s.audioUrl) : null;
   let h = 0; for(const ch of (s.title||'')) h = (h*31 + ch.charCodeAt(0)) >>> 0;
