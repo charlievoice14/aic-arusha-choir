@@ -64,11 +64,12 @@
     UI.$('#themeBtn').onclick = () => { const l = document.documentElement.classList.toggle('light'); try { localStorage.setItem('aac_theme', l ? 'light' : 'dark'); } catch (e) { } A.render(); };
     const view = UI.$('#view');
     const keepScroll = window.scrollY;
+    const inner = {}; view.querySelectorAll('[id]').forEach(e => { if (e.scrollTop > 0) inner[e.id] = e.scrollTop; });   // scrolled lists keep their place
     view.innerHTML = banners() + '<div id="mod"></div>';
     if (A._animate) { UI.$('#mod').classList.add('enter'); A._animate = false; }
     try { A.M[mod].render(UI.$('#mod'), A.nav.params || {}); A.Charts.bindTips(UI.$('#mod')); }
     catch (e) { console.error(e); UI.$('#mod').innerHTML = `<div class="banner warn">This module hit an error: ${esc(e.message)}</div>`; }
-    if (A._keepScroll) { window.scrollTo(0, keepScroll); A._keepScroll = false; }
+    if (A._keepScroll) { window.scrollTo(0, keepScroll); A._keepScroll = false; Object.entries(inner).forEach(([id, t]) => { const e = document.getElementById(id); if (e) e.scrollTop = t; }); }
   };
   let pending = false;
   A.rerender = () => {

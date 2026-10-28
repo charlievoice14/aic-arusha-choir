@@ -289,7 +289,20 @@
     el.innerHTML = `<div class="row between" style="margin-bottom:10px"><p class="small muted" style="margin:0;max-width:640px">Which songs to practise at each session, built from your schedule. Times come from the session; songs are ordered hardest first after a ${p.warmupMin ?? 10}-minute warm-up.</p>
       <div class="row">${UI.sel('ppShow', [['upcoming', 'Upcoming sessions'], ['all', 'All sessions']], show, null)}${canP() ? `<button class="btn pri" id="ppBuild">${L.planAssign(p.id).length ? 'Rebuild from schedule' : 'Build from schedule'}</button>` : ''}<button class="btn" id="ppPdf">Planner PDF</button></div></div>
       <div class="tabs"><button data-pv="m" class="${(A.state.ppView || 'm') === 'm' ? 'on' : ''}">When to practise each song</button><button data-pv="r" class="${A.state.ppView === 'r' ? 'on' : ''}">Session run sheets</button></div>
-      <div class="card">${(A.state.ppView || 'm') === 'm' ? A.SP.matrix(rows, songs, colorOf) : A.SP.runsheets(rows, p.id, p.warmupMin ?? 10, colorOf)}</div>`;
+      <div class="card" id="ppView">${(A.state.ppView || 'm') === 'm' ? A.SP.matrix(rows, songs, colorOf, { edit: canP() }) : A.SP.runsheets(rows, p.id, p.warmupMin ?? 10, colorOf)}</div>`;
+    // direct marking on the saved plan: tap a cell to add or remove that song at that session (saved straight away)
+    el.querySelector('#ppView').addEventListener('click', async (e) => {
+      const td = e.target.closest('[data-cell]'); if (!td || td.dataset.busy) return;
+      const [id, i] = td.dataset.cell.split('|'); const x = rows[+i]; if (!x) return;
+      const a = L.sessAssign(x.s.id).find(y => y.songId === id);
+      if (a && a.done) { UI.toast('Already practised at this session, so it stays.'); return; }
+      td.dataset.busy = '1'; td.classList.toggle('on', !a); if (!a && !td.style.getPropertyValue('--c')) td.style.setProperty('--c', 'var(--royal)');
+      try {
+        if (a) await St.del('assignments', a.id, { audit: false });
+        else await St.put('assignments', { id: x.s.id + '__' + id, sessionId: x.s.id, songId: id, planId: p.id, locked: true, done: false, minutes: L.songEst(p.id, id).min }, { audit: false });
+      } catch (err) { td.classList.toggle('on', !!a); UI.fail(err); }
+      delete td.dataset.busy;
+    });
     el.querySelector('#ppShow').onchange = (e) => { A.state.ppShow = e.target.value; A.render(); };
     el.querySelectorAll('[data-pv]').forEach(b => b.onclick = () => { A.state.ppView = b.dataset.pv; A.render(); });
     const bb = el.querySelector('#ppBuild'); if (bb) bb.onclick = () => { A.state.sp = null; A.go('schedule', { tab: 'planner', planId: p.id }); };

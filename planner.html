@@ -415,6 +415,19 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 .btn.pri{box-shadow:0 8px 18px -8px color-mix(in srgb,var(--royal) 70%,transparent)}
 .tabs{border-radius:14px}
 .bnav{border-radius:22px 22px 0 0}
+/* song practice planner: smooth ticking */
+.sp-songs tr.sp-row{cursor:pointer;transition:background-color .18s ease}
+.sp-songs tr.sp-row td{transition:background-color .18s ease}
+.sp-songs tr.sp-row:hover td{background:color-mix(in srgb,var(--royal) 8%,transparent)}
+.sp-songs tr.sp-row.on td{background:var(--royal-soft)}
+.sp-songs tr.sp-row input[type=checkbox]{width:18px;height:18px;cursor:pointer}
+.sp-songs tr.sp-row input[type=number]:disabled{opacity:.45}
+#spList{overscroll-behavior:contain}
+/* direct marking in the "when to practise each song" grid */
+.matrix.editable td.ed{cursor:pointer;transition:background-color .15s ease,box-shadow .15s ease,transform .1s ease;user-select:none;-webkit-user-select:none}
+.matrix.editable td.ed:hover{box-shadow:0 0 0 2px var(--royal) inset}
+.matrix.editable td.ed:active{transform:scale(.9)}
+.matrix.editable td.ed:not(.on):hover::after{content:"+";color:var(--muted);font-weight:700}
 </style>
 </head>
 <body>

@@ -90,12 +90,12 @@
         <label class="f"><span>Last practice by</span><input type="date" id="spTo" value="${esc(st.to)}"></label>
         </div>${target ? `<p class="small muted" style="margin-top:8px">Performance: <b>${U.fmtD(target)}</b>. Practices end the day before.</p>` : ''}</div>
       <div class="card"><h3>2 · Practice times from your schedule</h3>${prs.length ? prs.map(s => `<label class="row" style="padding:5px 0;border-bottom:1px solid var(--line)"><input type="checkbox" data-sl="${s.id}" ${st.slotIds.includes(s.id) ? 'checked' : ''}> ${UI.chip(s.name, L.slotColor(s))} <span class="small">${(s.weekdays || []).map(d => U.DAYS[d]).join(', ')} · ${esc(s.start)}–${esc(s.end)} · ${netOf(s)} min${s.freq === 'biweekly' ? ' · fortnightly' : ''}</span></label>`).join('') : `<div class="empty">No practice times in the schedule yet.${can() ? ' <button class="btn sm" id="spAddSlot">Add one</button>' : ''}</div>`}
-        <p class="small" style="margin-top:8px"><b class="num">${occ}</b> session(s) · <b class="num">${U.hrs(occMin)}</b> available between ${U.fmtDs(st.from)} and ${U.fmtDs(st.to)}</p></div>
+        <p class="small" id="spOcc" style="margin-top:8px"><b class="num">${occ}</b> session(s) · <b class="num">${U.hrs(occMin)}</b> available between ${U.fmtDs(st.from)} and ${U.fmtDs(st.to)}</p></div>
     </div>
-    <div class="card" style="margin-top:14px"><div class="row between"><h3>3 · Songs to prepare</h3><span class="small muted">${st.songIds.length} selected · estimated need ${U.hrs(need)} (before revision time)</span></div>
+    <div class="card" style="margin-top:14px"><div class="row between"><h3>3 · Songs to prepare</h3><span class="small muted" id="spSum">${st.songIds.length} selected · estimated need ${U.hrs(need)} (before revision time)</span></div>
       <div class="filters" style="margin:6px 0"><label class="grow">Find<input type="search" id="spQ" placeholder="Filter songs" value="${esc(st.q || '')}"></label><label>Add a collection${UI.sel('spCol', UI.opt.collections(), '', 'Choose…')}</label></div>
-      <div class="tw" style="max-height:360px;overflow:auto"><table class="t"><thead><tr><th></th><th>Song</th><th>Difficulty</th><th>Sessions needed</th><th>Minutes each</th><th>Readiness</th></tr></thead><tbody>
-      ${lib.filter(s => !st.q || (s.title || '').toLowerCase().includes(st.q.toLowerCase())).map(s => { const e = est(s.id); const on = st.songIds.includes(s.id); return `<tr><td><input type="checkbox" data-song="${s.id}" ${on ? 'checked' : ''} aria-label="Select"></td><td><b>${esc(s.title)}</b>${s.key ? ` <span class="muted small">${esc(s.key)}</span>` : ''}</td><td>${UI.pill(s.difficulty || 'moderate', null, s.difficulty === 'difficult' ? 'warn' : s.difficulty === 'easy' ? 'ok' : 'info')}</td><td><input type="number" min="1" max="20" data-es="${s.id}" value="${e.sessions}" style="width:70px" ${on ? '' : 'disabled'}></td><td><input type="number" min="5" max="90" step="5" data-em="${s.id}" value="${e.min}" style="width:70px" ${on ? '' : 'disabled'}></td><td>${plan ? UI.pill(L.stage(plan.id, s.id), L.STAGES) : '<span class="muted small">new</span>'}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">The song library is empty. Add songs in Song Library first.</td></tr>'}
+      <div class="tw" id="spList" style="max-height:360px;overflow:auto"><table class="t sp-songs"><thead><tr><th></th><th>Song</th><th>Difficulty</th><th>Sessions needed</th><th>Minutes each</th><th>Readiness</th></tr></thead><tbody>
+      ${lib.map(s => { const e = est(s.id); const on = st.songIds.includes(s.id); const hide = st.q && !(s.title || '').toLowerCase().includes(st.q.toLowerCase()); return `<tr class="sp-row ${on ? 'on' : ''}" data-row="${s.id}" data-title="${esc((s.title || '').toLowerCase())}" ${hide ? 'hidden' : ''}><td><input type="checkbox" data-song="${s.id}" ${on ? 'checked' : ''} aria-label="Select ${esc(s.title)}"></td><td><b>${esc(s.title)}</b>${s.key ? ` <span class="muted small">${esc(s.key)}</span>` : ''}</td><td>${UI.pill(s.difficulty || 'moderate', null, s.difficulty === 'difficult' ? 'warn' : s.difficulty === 'easy' ? 'ok' : 'info')}</td><td><input type="number" min="1" max="20" data-es="${s.id}" value="${e.sessions}" style="width:70px" ${on ? '' : 'disabled'}></td><td><input type="number" min="5" max="90" step="5" data-em="${s.id}" value="${e.min}" style="width:70px" ${on ? '' : 'disabled'}></td><td>${plan ? UI.pill(L.stage(plan.id, s.id), L.STAGES) : '<span class="muted small">new</span>'}</td></tr>`; }).join('') || '<tr><td colspan="6" class="muted">The song library is empty. Add songs in Song Library first.</td></tr>'}
       </tbody></table></div></div>
     <div class="card" style="margin-top:14px"><h3>4 · Session settings</h3><div class="form">
       <label class="f"><span>Warm-up at the start (minutes)</span><input type="number" id="spWarm" min="0" max="60" value="${st.warmup}"></label>
@@ -107,12 +107,25 @@
     const rer = () => { sync(); st.result = null; A.rerender(); };
     el.querySelector('#spPlan').onchange = (e) => { st.planId = e.target.value; st.from = ''; st.to = ''; st.songIds = null; st.result = null; st.eventId = ''; A.render(); };
     const se = el.querySelector('#spEv'); if (se) se.onchange = (e) => { st.eventId = e.target.value; st.to = ''; st.songIds = null; st.result = null; A.render(); };
-    ['#spFrom', '#spTo'].forEach(id => el.querySelector(id).onchange = rer);
-    el.querySelectorAll('[data-sl]').forEach(c => c.onchange = () => { st.slotIds = c.checked ? U.uniq([...st.slotIds, c.dataset.sl]) : st.slotIds.filter(x => x !== c.dataset.sl); rer(); });
-    el.querySelectorAll('[data-song]').forEach(c => c.onchange = () => { st.songIds = c.checked ? U.uniq([...st.songIds, c.dataset.song]) : st.songIds.filter(x => x !== c.dataset.song); rer(); });
-    el.querySelectorAll('[data-es],[data-em]').forEach(i => i.onchange = () => { const id = i.dataset.es || i.dataset.em; st.est[id] = Object.assign({}, st.est[id] || {}, i.dataset.es ? { sessions: +i.value } : { min: +i.value }); rer(); });
-    const q = el.querySelector('#spQ'); q.oninput = U.debounce(() => { st.q = q.value; sync(); A.rerender(); }, 250);
-    el.querySelector('#spCol').onchange = (e) => { const c = St.get('collections', e.target.value); if (c) { st.songIds = U.uniq([...st.songIds, ...(c.songIds || [])]); rer(); } };
+    /* Ticking songs and practice times updates the page in place, so the list never jumps or flickers. */
+    const stale = () => { if (st.result) { st.result = null; const o = el.querySelector('#spOut'); if (o) o.innerHTML = ''; } };
+    const updSum = () => { const n = st.songIds.reduce((t, id) => t + est(id).sessions * est(id).min, 0); el.querySelector('#spSum').textContent = `${st.songIds.length} selected · estimated need ${U.hrs(n)} (before revision time)`; };
+    const updOcc = () => { sync(); const sel = prs.filter(s => st.slotIds.includes(s.id)); const ok = st.from && st.to; const o = ok ? sel.reduce((t, s) => t + L.slotDates(s, st.from, st.to).length, 0) : 0; const m = ok ? sel.reduce((t, s) => t + L.slotDates(s, st.from, st.to).length * netOf(s), 0) : 0; el.querySelector('#spOcc').innerHTML = `<b class="num">${o}</b> session(s) · <b class="num">${U.hrs(m)}</b> available between ${U.fmtDs(st.from)} and ${U.fmtDs(st.to)}`; };
+    const setSong = (id, on) => {
+      st.songIds = on ? U.uniq([...st.songIds, id]) : st.songIds.filter(x => x !== id);
+      const tr = el.querySelector(`[data-row="${id}"]`); if (!tr) return;
+      tr.classList.toggle('on', on);
+      const cb = tr.querySelector('[data-song]'); if (cb.checked !== on) cb.checked = on;
+      tr.querySelectorAll('[data-es],[data-em]').forEach(i => i.disabled = !on);
+    };
+    ['#spFrom', '#spTo'].forEach(id => el.querySelector(id).onchange = () => { updOcc(); stale(); });   // in place: no page rebuild
+    el.querySelectorAll('[data-sl]').forEach(c => c.onchange = () => { st.slotIds = c.checked ? U.uniq([...st.slotIds, c.dataset.sl]) : st.slotIds.filter(x => x !== c.dataset.sl); updOcc(); stale(); });
+    el.querySelectorAll('[data-song]').forEach(c => c.onchange = () => { setSong(c.dataset.song, c.checked); updSum(); stale(); });
+    // tap anywhere on a song's row (not its number boxes) to tick it
+    el.querySelectorAll('[data-row]').forEach(tr => tr.onclick = (e) => { if (e.target.closest('input')) return; const on = !st.songIds.includes(tr.dataset.row); setSong(tr.dataset.row, on); updSum(); stale(); });
+    el.querySelectorAll('[data-es],[data-em]').forEach(i => i.onchange = () => { const id = i.dataset.es || i.dataset.em; st.est[id] = Object.assign({}, st.est[id] || {}, i.dataset.es ? { sessions: +i.value } : { min: +i.value }); updSum(); stale(); });
+    const q = el.querySelector('#spQ'); q.oninput = () => { st.q = q.value; const t = q.value.trim().toLowerCase(); el.querySelectorAll('[data-row]').forEach(tr => { tr.hidden = !!t && !tr.dataset.title.includes(t); }); };
+    el.querySelector('#spCol').onchange = (e) => { const c = St.get('collections', e.target.value); if (c) { (c.songIds || []).forEach(id => setSong(id, true)); updSum(); stale(); UI.toast(`Added ${(c.songIds || []).length} songs from ${c.name || 'the collection'}`); } e.target.value = ''; };
     const as = el.querySelector('#spAddSlot'); if (as) as.onclick = () => edit();
     el.querySelector('#spBuild').onclick = () => { sync(); try { st.result = build(st, plan, ev); showResult(el.querySelector('#spOut'), st, plan, ev); el.querySelector('#spOut').scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { UI.fail(e); } };
     if (st.result) showResult(el.querySelector('#spOut'), st, plan, ev);
@@ -150,11 +163,12 @@
 
   /** matrix (songs × dates) + per-session run sheets */
   A.SP = {};
-  A.SP.matrix = (sessRows, songIds, colorOf) => {
+  A.SP.matrix = (sessRows, songIds, colorOf, o = {}) => {
     if (!sessRows.length || !songIds.length) return '<div class="empty">Nothing to show yet.</div>';
+    const ed = !!o.edit;
     const head = sessRows.map(x => `<th title="${esc(U.fmtD(x.s.date) + ' ' + x.s.start)}">${U.fmtDs(x.s.date).replace(' ', '<br>')}</th>`).join('');
-    const body = songIds.map(id => { let n = 0; const total = sessRows.filter(x => x.ids.includes(id)).length; return `<tr><th class="song">${esc(L.songTitle(id))} <span class="muted small">${total}×</span></th>${sessRows.map(x => { const on = x.ids.includes(id); if (on) n++; return `<td class="${on ? 'on' : ''} ${on && x.locked && x.locked.includes(id) ? 'lock' : ''}" style="${on ? '--c:' + esc(colorOf(x.s)) : ''}" title="${on ? esc(L.songTitle(id) + ' · ' + U.fmtD(x.s.date) + ' (' + n + '/' + total + ')') : ''}">${on ? n : ''}</td>`; }).join('')}</tr>`; }).join('');
-    return `<div style="overflow-x:auto"><table class="matrix"><thead><tr><th class="song">Song \\ session</th>${head}</tr></thead><tbody>${body}</tbody></table></div><p class="small muted">Each colored cell is a practice of that song on that date. The number counts its practices so far. Cells with a dark outline are locked or pinned.</p>`;
+    const body = songIds.map(id => { let n = 0; const total = sessRows.filter(x => x.ids.includes(id)).length; return `<tr><th class="song">${esc(L.songTitle(id))} <span class="muted small">${total}×</span></th>${sessRows.map(x => { const on = x.ids.includes(id); if (on) n++; return `<td class="${on ? 'on' : ''} ${on && x.locked && x.locked.includes(id) ? 'lock' : ''} ${ed ? 'ed' : ''}" ${ed ? `data-cell="${esc(id)}|${sessRows.indexOf(x)}"` : ''} style="${on ? '--c:' + esc(colorOf(x.s)) : ''}" title="${on ? esc(L.songTitle(id) + ' · ' + U.fmtD(x.s.date) + ' (' + n + '/' + total + ')') + (ed ? ' · tap to remove' : '') : ed ? esc('Tap to practise ' + L.songTitle(id) + ' on ' + U.fmtD(x.s.date)) : ''}">${on ? n : ''}</td>`; }).join('')}</tr>`; }).join('');
+    return `<div style="overflow-x:auto" id="${ed ? 'spMatrix' : ''}"><table class="matrix ${ed ? 'editable' : ''}"><thead><tr><th class="song">Song \\ session</th>${head}</tr></thead><tbody>${body}</tbody></table></div><p class="small muted">Each colored cell is a practice of that song on that date. The number counts its practices so far. Outlined cells are locked (added by hand or pinned).${ed ? ' <b>Tap any cell to add or remove that song at that session.</b>' : ''}</p>`;
   };
   A.SP.runsheets = (sessRows, planId, warmup, colorOf) => `<div class="runsheet">${sessRows.map(x => { const rs = L.runSheet(x.s, x.ids, planId, warmup); return `<div class="rs" style="--c:${esc(colorOf(x.s))}"><h4>${U.fmtD(x.s.date)} · ${esc(x.s.start)}–${esc(x.s.end)}</h4><div class="small muted" style="display:block">${esc(x.s.venue || '')}</div>${rs.map(r => `<div><span>${r.from}–${r.to}</span><span style="${r.kind === 'song' ? 'font-weight:700' : 'color:var(--muted)'}">${esc(r.label)}</span></div>`).join('')}${rs.over ? `<div style="color:var(--bad)">⚠ about ${rs.over} min more than the session allows</div>` : ''}</div>`; }).join('')}</div>`;
 
@@ -162,13 +176,50 @@
     const r = st.result; if (!r) return;
     const slotOf = (s) => St.get('slots', (St.get('series', s.seriesId) || r.series.find(x => x.id === s.seriesId) || {}).slotId);
     const colorOf = (s) => L.slotColor(slotOf(s));
-    const rows = r.sessions.map(x => ({ s: x.s, ids: x.rows.map(y => y.songId), locked: x.rows.filter(y => y.locked).map(y => y.songId) }));
+    const reRows = () => r.sessions.map(x => ({ s: x.s, ids: x.rows.map(y => y.songId), locked: x.rows.filter(y => y.locked).map(y => y.songId) }));
+    let rows = reRows();
     const placed = U.uniq(rows.flatMap(x => x.ids));
-    out.innerHTML = `<div class="card"><div class="row between"><div><h3>Song practice planner</h3><div class="small muted">${rows.length} sessions · ${placed.length} songs · ${rows.reduce((t, x) => t + x.ids.length, 0)} song-practices · warm-up ${st.warmup} min · ${r.reserve}% kept for revision</div></div>
+    if (!r.order) r.order = st.songIds.filter(id => placed.includes(id)).concat(st.songIds.filter(id => !placed.includes(id)));
+    if (!r.req) {   // how many practices each song should get (for the "not enough sessions" note)
+      r.fixedWarnings = r.warnings.filter(w => !/could not get all the sessions|assigned songs need/.test(w));
+      r.req = {}; (r.needs || []).forEach(n => { r.req[n.id] = n.need + rows.filter(x => x.locked.includes(n.id)).length; });
+    }
+    const canEd = can();
+    const warnHtml = () => {
+      const w = r.fixedWarnings.slice();
+      r.sessions.forEach(x => { if (x.usedMin > x.capMin) w.push(`${U.fmtD(x.s.date)}: assigned songs need ~${x.usedMin} min but only ~${x.capMin} min are available after the ${r.reserve}% revision reserve.`); });
+      const short = Object.keys(r.req).filter(id => rows.filter(x => x.ids.includes(id)).length < r.req[id]);
+      if (short.length) w.push(`${short.length} song(s) don't have all the sessions they need yet: ` + short.map(id => L.songTitle(id)).join(', ') + '. Tap empty cells to add practices, or add sessions / extend time.');
+      return w.length ? `<div class="banner warn" style="margin-top:10px"><ul class="list-plain">${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '<div class="banner info" style="margin-top:10px">Every selected song gets the practices it needs within the available time. This is a planning estimate. It does not mean the songs will be ready.</div>';
+    };
+    const sumTxt = () => `${rows.length} sessions · ${U.uniq(rows.flatMap(x => x.ids)).length} songs · ${rows.reduce((t, x) => t + x.ids.length, 0)} song-practices · warm-up ${st.warmup} min · ${r.reserve}% kept for revision`;
+    out.innerHTML = `<div class="card"><div class="row between"><div><h3>Song practice planner</h3><div class="small muted" id="spSumR">${sumTxt()}</div></div>
       <div class="row"><button class="btn" id="spDiscard">Discard</button><button class="btn pri" id="spSave">${plan ? 'Save to plan' : 'Create plan & save'}</button></div></div>
-      ${r.warnings.length ? `<div class="banner warn" style="margin-top:10px"><ul class="list-plain">${r.warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>` : '<div class="banner info" style="margin-top:10px">Every selected song gets the practices it needs within the available time. This is a planning estimate. It does not mean the songs will be ready.</div>'}
-      <div class="tabs" style="margin-top:6px"><button data-v2="m" class="on">When to practise each song</button><button data-v2="r">Session run sheets</button></div><div id="spView">${A.SP.matrix(rows, st.songIds.filter(id => placed.includes(id)).concat(st.songIds.filter(id => !placed.includes(id))), colorOf)}</div></div>`;
-    out.querySelectorAll('[data-v2]').forEach(b => b.onclick = () => { out.querySelectorAll('[data-v2]').forEach(x => x.classList.toggle('on', x === b)); out.querySelector('#spView').innerHTML = b.dataset.v2 === 'm' ? A.SP.matrix(rows, st.songIds, colorOf) : A.SP.runsheets(rows, plan ? plan.id : st.tempId, st.warmup, colorOf); });
+      <div id="spWarn">${warnHtml()}</div>
+      <div class="tabs" style="margin-top:6px"><button data-v2="m" class="on">When to practise each song</button><button data-v2="r">Session run sheets</button></div><div id="spView">${A.SP.matrix(rows, r.order, colorOf, { edit: canEd })}</div></div>`;
+    let view = 'm';
+    const paint = () => {
+      const v = out.querySelector('#spView'); const sc = v.querySelector('#spMatrix'); const left = sc ? sc.scrollLeft : 0;
+      v.innerHTML = view === 'm' ? A.SP.matrix(rows, r.order, colorOf, { edit: canEd }) : A.SP.runsheets(rows, plan ? plan.id : st.tempId, st.warmup, colorOf);
+      const sc2 = v.querySelector('#spMatrix'); if (sc2) sc2.scrollLeft = left;
+    };
+    out.querySelectorAll('[data-v2]').forEach(b => b.onclick = () => { out.querySelectorAll('[data-v2]').forEach(x => x.classList.toggle('on', x === b)); view = b.dataset.v2; paint(); });
+    // direct marking: tap a cell to add or remove that song at that session (nothing is saved until "Save")
+    const minOf = (id) => (st.est[id] && +st.est[id].min) || L.songEst(plan ? plan.id : st.tempId, id).min;
+    out.querySelector('#spView').addEventListener('click', (e) => {
+      const td = e.target.closest('[data-cell]'); if (!td) return;
+      const [id, i] = td.dataset.cell.split('|'); const x = r.sessions[+i]; if (!x) return;
+      const k = x.rows.findIndex(y => y.songId === id);
+      if (k >= 0) {
+        if (x.rows[k].locked && !x.rows[k].manual) { UI.toast('This practice is locked in the plan. Unlock it in Practice Planner to remove it.'); return; }
+        x.usedMin -= x.rows[k].minutes || 0; x.rows.splice(k, 1); x.songs.delete(id);
+      } else {
+        const mn = minOf(id); x.rows.push({ sessionId: x.s.id, songId: id, locked: true, manual: true, minutes: mn }); x.songs.add(id); x.usedMin += mn;
+      }
+      rows = reRows(); paint();
+      out.querySelector('#spSumR').textContent = sumTxt();
+      out.querySelector('#spWarn').innerHTML = warnHtml();
+    });
     out.querySelector('#spDiscard').onclick = () => { st.result = null; out.innerHTML = ''; };
     out.querySelector('#spSave').onclick = async (e) => {
       e.target.disabled = true;
