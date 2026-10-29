@@ -522,6 +522,31 @@ table.t tr.click td{transition:background-color .2s ease}
 
 /* keep the planner solid on phones: no pinch or double-tap zoom */
 html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+
+@media (max-width:640px){
+  /* card tables: first cell is the title; a lone checkbox sits beside it instead */
+  .tw.resp table.t td:first-child:has(> input[type=checkbox]:only-child){border:0;padding:6px 0 0;margin:0;justify-content:flex-start}
+  .tw.resp table.t td:first-child:has(> input[type=checkbox]:only-child)::before{display:none}
+  .tw.resp table.t td:has(> input[type=number]) input{max-width:110px;text-align:right}
+  .tw.resp table.t td{font-size:.86rem}
+  .tw.resp table.t td::before{max-width:48%}
+  /* Song practice planner list: compact song cards */
+  #spList.tw.resp{overflow:auto;max-height:440px;padding:2px}
+  .tw.resp table.sp-songs tr{display:grid;grid-template-columns:26px 1fr auto;column-gap:10px;align-items:center;padding:8px 12px}
+  .tw.resp table.sp-songs td{border:0!important;padding:3px 0!important;margin:0!important}
+  .tw.resp table.sp-songs td:nth-child(1){grid-column:1;grid-row:1}
+  .tw.resp table.sp-songs td:nth-child(2){grid-column:2;grid-row:1;justify-content:flex-start;text-align:left;font-size:.95rem}
+  .tw.resp table.sp-songs td:nth-child(3){grid-column:3;grid-row:1}
+  .tw.resp table.sp-songs td:nth-child(2)::before,.tw.resp table.sp-songs td:nth-child(3)::before{display:none}
+  .tw.resp table.sp-songs td:nth-child(n+4){grid-column:1/-1}
+  .tw.resp table.sp-songs tr:not(.on) td:nth-child(n+4){display:none}
+  .tw.resp table.sp-songs tr.sp-row.on td,.tw.resp table.sp-songs tr.sp-row:hover td{background:transparent!important}
+  .tw.resp table.sp-songs tr.sp-row.on{background:var(--royal-soft);border-color:color-mix(in srgb,var(--royal) 55%,transparent)}
+  /* numbered tables (#, Metric, …): the name is the card title */
+  .tw.resp table.num-first td:first-child{display:none}
+  .tw.resp table.num-first td:nth-child(2){font-size:.95rem;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;justify-content:flex-start;text-align:left}
+  .tw.resp table.num-first td:nth-child(2)::before{display:none}
+}
 </style>
 </head>
 <body>

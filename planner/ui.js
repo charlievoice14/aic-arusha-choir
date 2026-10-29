@@ -199,3 +199,21 @@
     pick.oninput = () => set(pick.value);
   });
 })(window.App);
+
+/* Phones: every table becomes easy-to-read cards (labels come from the column headings). */
+(function (A) {
+  const UI = A.UI;
+  UI.respTables = (root) => {
+    (root || document).querySelectorAll('table.t:not(.mx):not([data-resp])').forEach(t => {
+      t.dataset.resp = '1';
+      const tw = t.closest('.tw'); if (!tw) return;
+      const heads = [...t.querySelectorAll('thead th')].map(th => th.textContent.trim());
+      t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (!td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i] || ''); }));
+      if (heads[0] === '#') t.classList.add('num-first');   // numbered lists: the name becomes the card title
+      tw.classList.add('resp');
+    });
+  };
+  let queued = false;
+  const run = () => { queued = false; UI.respTables(document); };
+  new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(run); } }).observe(document.documentElement, { childList: true, subtree: true });
+})(window.App);
