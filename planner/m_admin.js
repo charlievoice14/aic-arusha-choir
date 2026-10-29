@@ -101,38 +101,65 @@
     el.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { try { await St.put('cfg', Object.assign({}, St.cfg(), { id: 'org', holidays: (cfg.holidays || []).filter(h => h.date !== b.dataset.del) })); A.render(); } catch (e) { UI.fail(e); } });
   }
 
+  const SHORT = { admin: 'Admin', chair: 'Chair', secretary: 'Secretary', music: 'Music Dir.', dept: 'Dept. leader', member: 'Member', viewer: 'Read-only' };
   async function roles(el) {
-    const can = A.Auth.can('roles'); const user = A.caps.user;
+    const can = A.Auth.can('roles'); const user = A.caps.user; const CL = window.ChoirLink || {};
     const rs = St.all('roles');
     const ids = rs.map(r => r.id);
     const ps = user && ids.length ? await user.profiles(ids).catch(() => ({})) : {};
     const mx = A.Auth.matrix();
+    const RL = A.allRoles();
+    const titles = A.titles();
+    const avail = (CL.titles || []);
+    const fresh = avail.filter(t => !titles.includes(t));
+    const leaders = (CL.leaders || []).slice().sort((a, b) => (a.admin === b.admin ? a.name.localeCompare(b.name) : a.admin ? -1 : 1));
+    const count = (t) => (CL.members || []).filter(m => m && m.position === t).length;
     el.innerHTML = `<div class="grid g2">
-      <div class="card"><h3>People & roles</h3>
-        <p class="muted small">Choir app administrators are always System Administrator. Leaders get a role from their choir position (Chairperson → Chair, Secretary/Treasurer → Secretary, Music Director → Music Director, others → Department Leader) until you set one here.</p>
-        ${UI.table([{ label: 'Person', f: r => esc((ps[r.id] && ps[r.id].name) || 'Someone') }, { label: 'Role', f: r => esc((A.ROLES.find(x => x[0] === r.role) || [, r.role])[1]) }, { label: 'Member profile', f: r => esc(L.memberName(r.memberId)) }, { label: '', f: r => can ? `<button class="btn sm" data-ed="${r.id}">Edit</button>` : '' }], rs, { empty: 'No roles assigned yet. Everyone with Contributor access defaults to Choir Member.' })}
-        ${can && user ? `<div style="margin-top:10px"><label class="small muted" for="pSearch">Add a person</label><input type="search" id="pSearch" placeholder="Search people by name"><div id="pHits"></div></div>` : (can ? '<p class="muted small">People search is unavailable in this view.</p>' : '')}
+      <div class="card"><h3>Leadership titles</h3>
+        <p class="muted small">Bring in the leadership titles used in the choir app (Chairperson, Secretary, Treasurer…). Each title becomes a column in the permission matrix below, and everyone with that title gets its permissions automatically.</p>
+        ${titles.length ? `<div class="row" style="gap:6px;margin:8px 0">${titles.map(t => `<span class="pill info">${esc(t)} <span class="muted">· ${count(t)}</span></span>`).join('')}</div>` : '<div class="empty" style="padding:16px">No titles imported yet.</div>'}
+        <div class="row" style="margin-top:8px">${can ? `<button class="btn pri" id="tImport">${titles.length ? (fresh.length ? `Import ${fresh.length} new title${fresh.length === 1 ? '' : 's'}` : 'Refresh titles') : 'Import titles from the choir app'}</button>` : ''}${can && titles.length ? '<button class="btn ghost" id="tClear">Stop using titles</button>' : ''}</div>
       </div>
-      <div class="card"><h3>Permission matrix</h3><p class="muted small">Ticks control what each role can do in the app.</p>
-        <div class="tw"><table class="t"><thead><tr><th>Permission</th>${A.ROLES.map(r => `<th title="${esc(r[1])}">${esc(r[1].split(' ')[0])}</th>`).join('')}</tr></thead><tbody>
-        ${A.PERMS.map(([p, d]) => `<tr><td>${esc(d)}</td>${A.ROLES.map(([r]) => `<td style="text-align:center"><input type="checkbox" data-r="${r}" data-p="${p}" ${r === 'admin' ? 'checked disabled' : ''} ${(mx[r] || []).includes(p) ? 'checked' : ''} ${can ? '' : 'disabled'} aria-label="${esc(r + ' ' + d)}"></td>`).join('')}</tr>`).join('')}
+      <div class="card"><h3>Leaders & their planner roles</h3>
+        <p class="muted small">Choir app administrators are always System Administrator. Everyone else follows their title, unless you give them a different role here.</p>
+        ${UI.table([
+          { label: 'Name', f: l => `<b>${esc(l.name)}</b>` },
+          { label: 'Title', f: l => esc(l.title || '—') },
+          { label: 'Planner role', f: l => { const own = St.get('roles', l.uid); const k = A.roleFor(l.uid, l.title, l.admin); return esc(A.roleLabel(k)) + (own && own.role && !l.admin ? ' <span class="pill gold">set by hand</span>' : ''); } },
+          { label: '', f: l => can && !l.admin ? `<button class="btn sm" data-ed="${esc(l.uid)}" data-nm="${esc(l.name)}">Change</button>` : '' }
+        ], leaders, { empty: 'No leaders have logged in to the choir app yet.' })}
+        ${rs.filter(r => !leaders.some(l => l.uid === r.id)).length ? `<p class="small muted" style="margin-top:10px">Other people with a role: ${rs.filter(r => !leaders.some(l => l.uid === r.id)).map(r => `${esc((ps[r.id] && ps[r.id].name) || 'Someone')} (${esc(A.roleLabel(r.role))}) ${can ? `<button class="btn sm ghost" data-ed="${esc(r.id)}">Edit</button>` : ''}`).join(' · ')}</p>` : ''}
+      </div></div>
+      <div class="card" style="margin-top:14px"><h3>Permission matrix</h3><p class="muted small">Ticks control what each role and leadership title can do in the planner. Scroll sideways to see every title.</p>
+        <div class="tw"><table class="t mx"><thead><tr><th>Permission</th>${RL.map(r => `<th title="${esc(r[1])}" style="text-align:center;white-space:normal;min-width:${r[0].startsWith('t_') ? 92 : 70}px">${esc(SHORT[r[0]] || r[1])}</th>`).join('')}</tr></thead><tbody>
+        ${A.PERMS.filter(([p]) => p !== 'ai' || A.caps.sample).map(([p, d]) => `<tr><td>${esc(d)}</td>${RL.map(([r]) => `<td style="text-align:center"><input type="checkbox" data-r="${r}" data-p="${p}" ${r === 'admin' ? 'checked disabled' : ''} ${(mx[r] || []).includes(p) ? 'checked' : ''} ${can ? '' : 'disabled'} aria-label="${esc(r + ' ' + d)}"></td>`).join('')}</tr>`).join('')}
         </tbody></table></div>
         <div class="row" style="margin-top:8px"><button class="btn pri" id="saveMx" ${can ? '' : 'disabled'}>Save permissions</button><button class="btn" id="resetMx" ${can ? '' : 'disabled'}>Restore defaults</button></div>
-      </div></div>`;
-    const editRole = (uid, cur) => UI.edit({ title: 'Role for ' + ((ps[uid] && ps[uid].name) || 'this person'), fields: [{ k: 'role', label: 'Role', type: 'select', options: A.ROLES, req: true, blank: false }, { k: 'memberId', label: 'Linked member profile', type: 'select', options: UI.opt.members(), hint: 'Used for "My Tasks", attendance and department leadership.' }], rec: cur || { role: 'member' }, onSave: (v) => St.put('roles', Object.assign({ id: uid }, v), { summary: 'Role ' + v.role }).then(() => A.render()), deleteFn: cur ? () => St.del('roles', uid).then(() => A.render()) : null });
-    el.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => editRole(b.dataset.ed, St.get('roles', b.dataset.ed)));
-    const ps2 = el.querySelector('#pSearch');
-    if (ps2) {
-      const show = async () => { const hits = await user.search(ps2.value); const box = el.querySelector('#pHits'); box.innerHTML = hits.map(h => `<button class="btn sm" data-h="${esc(h.id)}" style="margin:4px 4px 0 0"></button>`).join('') || '<span class="muted small">No matches.</span>'; box.querySelectorAll('[data-h]').forEach((b, i) => { b.textContent = hits[i].name; b.onclick = () => { ps[hits[i].id] = hits[i]; editRole(hits[i].id, St.get('roles', hits[i].id)); }; }); };
-      ps2.addEventListener('focus', show); ps2.addEventListener('input', show);
-    }
+      </div>`;
+    const editRole = (uid, name) => { const cur = St.get('roles', uid); UI.edit({ title: 'Planner role for ' + (name || (ps[uid] && ps[uid].name) || 'this person'), fields: [{ k: 'role', label: 'Role', type: 'select', options: RL, req: true, blank: false, hint: 'Leave it on their title to follow the permission matrix for that title.' }, { k: 'memberId', label: 'Linked member profile', type: 'select', options: UI.opt.members(), hint: 'Used for "My Tasks", attendance and department leadership.' }], rec: cur || { role: A.roleFor(uid, (leaders.find(l => l.uid === uid) || {}).title, false) }, onSave: (v) => St.put('roles', Object.assign({ id: uid }, v), { summary: 'Role ' + v.role }).then(() => A.render()), deleteFn: cur ? () => St.del('roles', uid).then(() => { UI.toast('Back to following their title'); A.render(); }) : null }); };
+    el.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => editRole(b.dataset.ed, b.dataset.nm));
+    const ti = el.querySelector('#tImport');
+    if (ti) ti.onclick = async () => {
+      ti.disabled = true;
+      try {
+        const list = [...new Set(titles.concat(avail))];
+        await St.put('cfg', { id: 'titles', list }, { summary: 'Leadership titles imported' });
+        // new titles start with the permissions of the role their name suggests
+        const cur = (St.get('cfg', 'perms') || {}).matrix || {}; const add = {};
+        list.forEach(t => { const k = A.titleKey(t); if (!cur[k]) add[k] = A.titleDefaults(t); });
+        if (Object.keys(add).length) await St.put('cfg', { id: 'perms', matrix: Object.assign({}, A.DEFAULT_MATRIX, cur, add) }, { summary: 'Title permissions' });
+        UI.toast(`${list.length} leadership titles ready in the permission matrix`); A.render();
+      } catch (e) { ti.disabled = false; UI.fail(e); }
+    };
+    const tc = el.querySelector('#tClear');
+    if (tc) tc.onclick = async () => { if (!(await UI.confirm('Stop using leadership titles? Leaders go back to the role suggested by their position.', { ok: 'Stop using titles', danger: true }))) return; try { await St.put('cfg', { id: 'titles', list: [] }); A.render(); } catch (e) { UI.fail(e); } };
     el.querySelector('#saveMx').onclick = async () => {
-      const m = {}; A.ROLES.forEach(([r]) => m[r] = []);
+      const m = {}; RL.forEach(([r]) => m[r] = []);
       el.querySelectorAll('[data-r]').forEach(c => { if (c.checked) m[c.dataset.r].push(c.dataset.p); });
       m.admin = A.PERMS.map(p => p[0]);
       try { await St.put('cfg', { id: 'perms', matrix: m }, { summary: 'Permission matrix' }); UI.toast('Permissions saved'); } catch (e) { UI.fail(e); }
     };
-    el.querySelector('#resetMx').onclick = async () => { try { await St.put('cfg', { id: 'perms', matrix: A.DEFAULT_MATRIX }, { summary: 'Permission defaults' }); A.render(); } catch (e) { UI.fail(e); } };
+    el.querySelector('#resetMx').onclick = async () => { const m = Object.assign({}, A.DEFAULT_MATRIX); A.titles().forEach(t => m[A.titleKey(t)] = A.titleDefaults(t)); try { await St.put('cfg', { id: 'perms', matrix: m }, { summary: 'Permission defaults' }); A.render(); } catch (e) { UI.fail(e); } };
   }
 
   function integrations(el) {

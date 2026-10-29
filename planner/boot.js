@@ -41,7 +41,22 @@
     UI.$$('#bnav a').forEach(a => a.onclick = (e) => { e.preventDefault(); if (a.dataset.k === 'more') document.body.classList.add('navopen'); else A.go(a.dataset.k); });
     UI.$('#brand').innerHTML = `${cfg.logo ? `<img src="${esc(cfg.logo)}" alt="">` : '<div class="mark">♪</div>'}<div><div class="nm">${esc(cfg.name || 'Choir Planner')}</div><div class="sub">${esc(cfg.church || 'Annual planning & ministry')}</div></div>`;
     UI.$('#footInfo').textContent = `Planning year ${cfg.year || 2027} · ${U.TZ}`;
+    fitSidebar();
   }
+  /* Wide screens: the sidebar grows or shrinks to fit its longest label. */
+  function fitSidebar() {
+    const side = UI.$('#side'), root = document.documentElement;
+    if (!side) return;
+    if (window.innerWidth <= 900 || document.body.classList.contains('collapsed')) { root.style.removeProperty('--side-w'); return; }
+    const foot = side.querySelector('.foot'); if (foot) foot.style.display = 'none';   // the footer text wraps; size by the menu
+    side.style.width = 'max-content';
+    const w = Math.ceil(side.getBoundingClientRect().width) + 6;
+    side.style.width = ''; if (foot) foot.style.display = '';
+    root.style.setProperty('--side-w', Math.max(210, Math.min(360, w)) + 'px');
+  }
+  A.fitSidebar = fitSidebar;
+  window.addEventListener('resize', U.debounce(fitSidebar, 150));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSidebar);
   function visibleReminders() { const d = new Set((A.prefs.dismissed || [])); return L.reminders().filter(r => !d.has(r.id + '@' + r.when)); }
   A.visibleReminders = visibleReminders;
 
@@ -86,7 +101,7 @@
     document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.tabs button,[data-go],#nav a,#bnav a,tr.click,.stat,.kpi,[data-v],[data-t]')) { A._animate = true; setTimeout(() => { A._animate = false; }, 250); } }, true);
     UI.$('#burger').onclick = () => document.body.classList.toggle('navopen');
     UI.$('#scrim').onclick = () => document.body.classList.remove('navopen');
-    UI.$('#collapseBtn').onclick = () => { document.body.classList.toggle('collapsed'); try { localStorage.setItem('aac_collapsed', document.body.classList.contains('collapsed') ? '1' : ''); } catch (e) { } };
+    UI.$('#collapseBtn').onclick = () => { document.body.classList.toggle('collapsed'); fitSidebar(); try { localStorage.setItem('aac_collapsed', document.body.classList.contains('collapsed') ? '1' : ''); } catch (e) { } };
     try { if (localStorage.getItem('aac_collapsed')) document.body.classList.add('collapsed'); } catch (e) { }
     try { if (localStorage.getItem('aac_theme') === 'light') document.documentElement.classList.add('light'); } catch (e) { }
     const c = window.claude;

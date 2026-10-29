@@ -191,6 +191,19 @@ window.App = window.App || {};
     member: ['tasks_own'],
     viewer: [],
   };
+  /* Leadership titles imported from the choir app act as roles too (Settings → Roles & permissions). */
+  A.titleKey = (t) => 't_' + String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  A.titles = () => ((A.Store.get('cfg', 'titles') || {}).list || []);
+  A.allRoles = () => ROLES.concat(A.titles().map(t => [A.titleKey(t), t]));
+  A.titleDefaults = (t) => { const base = (window.ChoirLink && window.ChoirLink.roleForPosition) ? window.ChoirLink.roleForPosition(t) : 'dept'; return (A.DEFAULT_MATRIX[base] || []).slice(); };
+  /** planner role for a person: their own role setting → their imported title → a role suggested by the title */
+  A.roleFor = (uid, title, isAdmin) => {
+    if (isAdmin) return 'admin';
+    const r = uid && A.Store.get('roles', uid); if (r && r.role) return r.role;
+    if (title && A.titles().includes(title)) return A.titleKey(title);
+    return title && window.ChoirLink ? window.ChoirLink.roleForPosition(title) : 'member';
+  };
+  A.roleLabel = (key) => (A.allRoles().find(x => x[0] === key) || [, key])[1];
   const Auth = A.Auth = {
     user: null, uid: null, me: null, isOwner: false, canEdit: false, dataWrite: null, refusedWrite: false,
     async init(user) {
@@ -208,11 +221,13 @@ window.App = window.App || {};
       const r = this.roleDoc();
       if (this.isOwner) return 'admin';
       if (r && r.role) return r.role;
+      const pos = window.ChoirLink && window.ChoirLink.me && window.ChoirLink.me.position;
+      if (pos && A.titles().includes(pos)) return A.titleKey(pos);
       return (window.ChoirLink && window.ChoirLink.defaultRole) || 'member';
     },
-    roleName() { const r = this.role(); return (ROLES.find(x => x[0] === r) || [, r])[1]; },
+    roleName() { return A.roleLabel(this.role()); },
     memberId() { const r = this.roleDoc(); if (r && r.memberId) return r.memberId; const m = A.Store.all('members').find(m => m.userId && m.userId === this.uid); return m ? m.id : null; },
-    matrix() { const p = A.Store.get('cfg', 'perms'); return Object.assign({}, A.DEFAULT_MATRIX, (p && p.matrix) || {}); },
+    matrix() { const p = A.Store.get('cfg', 'perms'); const td = {}; A.titles().forEach(t => td[A.titleKey(t)] = A.titleDefaults(t)); return Object.assign({}, A.DEFAULT_MATRIX, td, (p && p.matrix) || {}); },
     has(perm) { const role = this.role(); if (role === 'admin') return true; return (this.matrix()[role] || []).includes(perm); },
     myDepts() { // departments the current member leads/co-leads (editors) or belongs to
       const mid = this.memberId(); if (!mid) return { led: [], member: [] };
@@ -222,7 +237,7 @@ window.App = window.App || {};
     /** may edit this department's workspace (profile, plans, tasks, notes, budget requests) */
     canDept(deptId) {
       if (!deptId || !this.canWriteData()) return false;
-      if (['admin', 'chair', 'secretary'].includes(this.role())) return true;
+      if (['admin', 'chair', 'secretary'].includes(this.role()) || this.has('workplan')) return true;
       return this.myDepts().led.includes(deptId);
     },
     can(perm, rec) {

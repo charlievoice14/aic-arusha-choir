@@ -15,6 +15,8 @@
     appId: "1:79314643242:web:6985febc11feadcfe7d653"
   };
   const USER_KEY = 'choir_current_member_id';
+  /* the choir app's leadership positions (same list as in the app) */
+  const POSITIONS = ["Choir Leader","Assistant Choir Leader","Music Director","Section Leader","Chairperson","Assistant Chairperson","Secretary","Assistant Secretary","Treasurer","Assistant Treasurer","Discipline Leader","Assistant Discipline Leader"];
   const PREFIX = 'pl_';
 
   /* Planner role suggested by the member's choir position (an admin can change it in Settings → Roles). */
@@ -106,6 +108,11 @@
     window.ChoirLink = {
       uid, me, isAdmin, members, fs,
       defaultRole: isAdmin ? 'admin' : roleForPosition(me.position),
+      roleForPosition,
+      /* every leadership title used in the choir app (standard list + any used by members) */
+      titles: [...new Set(POSITIONS.concat(members.map(m => m && m.position).filter(p => p && p !== 'Choir Member')))],
+      /* everyone who can open the planner, with their title */
+      leaders: leaders.map(m => ({ uid: m.authUid, memberId: m.id, name: m.name, title: m.role === 'admin' ? 'Administrator' : (m.position || ''), admin: m.role === 'admin' })),
       /* choir members not yet in the planner, ready to be added */
       choirMembers: members.filter(m => m && m.name).map(m => ({ choirId: m.id, name: m.name, sections: m.voicePart ? [m.voicePart] : [], role: m.position && m.position !== 'Choir Member' ? m.position : '', userId: m.authUid || '' }))
     };
