@@ -506,6 +506,19 @@ table.t tr.click td{transition:background-color .2s ease}
   .modal footer .btn{width:100%;white-space:normal}
   .modal footer .btn.pri{grid-column:1/-1;order:-1}
 }
+
+/* loading screen (dotted ring + "loading..") */
+#plLoader{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:linear-gradient(160deg,var(--bg-a) 0%,var(--bg-b) 45%,var(--bg-c) 100%);transition:opacity .45s ease,visibility .45s}
+#plLoader.done{opacity:0;visibility:hidden}
+#plLoader .ld{display:flex;flex-direction:column;align-items:center;gap:22px}
+#plLoader .ring{position:relative;width:96px;height:96px;animation:plspin 1.5s steps(16) infinite}
+#plLoader .ring i{position:absolute;left:50%;top:50%;border-radius:50%;background:var(--royal);
+  width:calc(4px + var(--i) * .55px);height:calc(4px + var(--i) * .55px);
+  transform:translate(-50%,-50%) rotate(calc(var(--i) * 22.5deg)) translateY(-40px);opacity:calc(.25 + var(--i) * .05)}
+#plLoader .txt{color:var(--fg);font:500 1.15rem/1 "Poppins",system-ui,sans-serif;letter-spacing:.06em}
+#plLoader .sub{color:var(--muted);font:500 .78rem/1 "Poppins",system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;margin-top:-10px}
+@keyframes plspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#plLoader .ring{animation-duration:4s}}
 </style>
 </head>
 <body>
@@ -531,6 +544,8 @@ table.t tr.click td{transition:background-color .2s ease}
 
 
 <div id="gate" hidden></div>
+<div id="plLoader" role="status" aria-label="Loading"><div class="ld"><div class="ring"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i><i style="--i:14"></i><i style="--i:15"></i></div><div class="txt">loading..</div><div class="sub">AAC Planner</div></div></div>
+<script>window.hideLoader=function(){var l=document.getElementById('plLoader');if(l&&!l.classList.contains('done')){l.classList.add('done');setTimeout(function(){l.remove()},600)}};setTimeout(window.hideLoader,20000);</script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>

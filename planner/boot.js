@@ -97,7 +97,7 @@
   };
 
   async function boot() {
-    if (window.ChoirReady && !(await window.ChoirReady)) return;   // not allowed in: bridge.js shows why
+    if (window.ChoirReady && !(await window.ChoirReady)) { if (window.hideLoader) window.hideLoader(); return; }   // not allowed in: bridge.js shows why
     document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.tabs button,[data-go],#nav a,#bnav a,tr.click,.stat,.kpi,[data-v],[data-t]')) { A._animate = true; setTimeout(() => { A._animate = false; }, 250); } }, true);
     UI.$('#burger').onclick = () => document.body.classList.toggle('navopen');
     UI.$('#scrim').onclick = () => document.body.classList.remove('navopen');
@@ -119,6 +119,7 @@
     const h = location.hash.replace('#', '');
     A.nav.mod = A.M[h] ? h : 'dashboard';
     A.render();
+    if (window.hideLoader) window.hideLoader();
     window.addEventListener('hashchange', () => { if (A._silentHash) { A._silentHash = false; return; } const k = location.hash.replace('#', ''); if (A.M[k] && k !== A.nav.mod) A.go(k); });
     if (!St.get('cfg', 'org') && A.Auth.has('settings') && A.Auth.canWriteData()) { if (!(await offerImport())) A.M.admin.wizard(); }
   }
