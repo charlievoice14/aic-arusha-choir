@@ -16,6 +16,13 @@
   // ---------- data helpers ----------
   F.set = () => Object.assign({ monthlyFee: 10000, threshold: 5, feesFrom: '2024-01' }, St.get('fin_settings', 'main') || {});
   const CUR = () => U.today().slice(0, 7);
+  /** income & expense categories: editable in the Categories tab (records keep their category even if it is removed) */
+  F.incomeCats = () => { const l = (St.get('fin_settings', 'main') || {}).incomeCats; return Array.isArray(l) && l.length ? l : F.INCOME_CATS; };
+  F.expenseCats = () => { const l = (St.get('fin_settings', 'main') || {}).expenseCats; return Array.isArray(l) && l.length ? l : F.EXPENSE_CATS; };
+  const withCur = (list, cur) => cur && !list.includes(cur) ? list.concat([cur]) : list;
+  /** member contribution categories (stored as contributions): ongoing ones (tithe, welfare…) and fundraising goals */
+  const isOngoing = (c) => c && c.kind === 'ongoing';
+  const openCats = () => CO().filter(c => c.status !== 'Closed').sort((a, b) => (isOngoing(b) - isOngoing(a)) || (a.name || '').localeCompare(b.name || ''));
   const fmt = (n) => (St.cfg().currency || 'TZS') + ' ' + Math.round(n || 0).toLocaleString('en-US');
   F.fmt = fmt;
   const mLabel = (m) => m ? U.MON[+m.slice(5, 7) - 1] + ' ' + m.slice(0, 4) : '—';
@@ -55,7 +62,7 @@
     rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     let c = 0, bk = 0; return rows.map(r => { const n = r.inAmt - r.outAmt; if (bucket(r.method) === 'Cash') c += n; else bk += n; return Object.assign(r, { cashBal: c, bankBal: bk, bal: c + bk }); });
   };
-  F.byIncome = () => { const o = {}; INC().forEach(i => o[i.category] = (o[i.category] || 0) + (+i.amount || 0)); const f = P().reduce((s, p) => s + (+p.amount || 0), 0); if (f) o['Membership Fees'] = (o['Membership Fees'] || 0) + f; const c = CP().reduce((s, p) => s + (+p.amount || 0), 0); if (c) o['Special Contribution'] = (o['Special Contribution'] || 0) + c; return o; };
+  F.byIncome = () => { const o = {}; INC().forEach(i => o[i.category] = (o[i.category] || 0) + (+i.amount || 0)); const f = P().reduce((s, p) => s + (+p.amount || 0), 0); if (f) o['Membership Fees'] = (o['Membership Fees'] || 0) + f; CP().forEach(p => { const n = (St.get('fin_contribs', p.contribId) || {}).name || 'Special Contribution'; o[n] = (o[n] || 0) + (+p.amount || 0); }); return o; };
   F.byExpense = () => { const o = {}; EXP().forEach(e => o[e.category] = (o[e.category] || 0) + (+e.amount || 0)); return o; };
   F.summary = () => ({ totals: totals(), cur: CUR(), inc: monthIncome(CUR()), exp: monthExpense(CUR()), months: last6(CUR()).map(m => [m, monthIncome(m), monthExpense(m)]), feeExpected: obligated().reduce((s, m) => s + memberFee(m), 0), feeCollected: P().filter(p => p.month === CUR()).reduce((s, p) => s + (+p.amount || 0), 0), contribs: CO().map(c => [c, cCollected(c.id)]), members: F.members().map(m => ({ m, status: status(m), months: paidMonths(m), out: outstanding(m) })) });
   F.eventMoney = (eid) => ({ income: INC().filter(i => i.eventId === eid).reduce((s, i) => s + (+i.amount || 0), 0), expense: EXP().filter(e => e.eventId === eid).reduce((s, e) => s + (+e.amount || 0), 0) });
@@ -66,7 +73,7 @@
   const guard = () => { if (!F.canEdit()) throw new Error('Only the Finance & Fundraising team can record finance entries.'); };
 
   // ---------- module shell ----------
-  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['settings', 'Settings & import']];
+  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
   F.render = (el) => {
     if (!F.canView()) return myStatement(el);
     const s = A.state.fin = A.state.fin || { tab: 'dash', mf: 'all', q: '', month: CUR() };
@@ -74,7 +81,7 @@
       <div class="tabs">${TABS.map(([k, t]) => `<button data-ft="${k}" class="${s.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="finBody"></div>`;
     el.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { s.tab = b.dataset.ft; A._animate = true; A.render(); });
     const body = el.querySelector('#finBody'); bindNames(body);
-    ({ dash, members, fees, contribs, income, expenses, ledger, reports, settings })[s.tab](body, s);
+    ({ dash, members, fees, contribs, income, expenses, ledger, reports, cats, settings })[s.tab](body, s);
     A.Charts.bindTips(body); UI.bindGo(body);
   };
   A.M.finance = { render(root) { root.innerHTML = `<div class="hero-h"><div><div class="muted small">Finance & Fundraising department</div><h2>AAC <em>Finance Manager</em></h2></div></div><div id="finRoot"></div>`; F.render(root.querySelector('#finRoot')); } };
@@ -123,7 +130,7 @@
     const body = document.createElement('div');
     const entries = () => [
       ...P().filter(p => p.memberId === id).map(p => ({ k: 'p', id: p.id, date: p.date, what: 'Membership fee · ' + mLabel(p.month), sort: p.month, method: p.method, amount: +p.amount || 0 })),
-      ...CP().filter(p => p.memberId === id).map(p => ({ k: 'c', id: p.id, date: p.date, what: 'Contribution · ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), sort: '', method: p.method, amount: +p.amount || 0 }))
+      ...CP().filter(p => p.memberId === id).map(p => ({ k: 'c', id: p.id, date: p.date, what: ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted contribution') + (p.note ? ' · ' + p.note : ''), sort: '', method: p.method, amount: +p.amount || 0 }))
     ].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.sort || '').localeCompare(a.sort || ''));
     const paint = () => {
       const es = entries(); const months = feeMonths(m);
@@ -138,7 +145,7 @@
           ${es.map(x => `<tr>${can ? `<td><input type="checkbox" data-pk="${x.k}:${x.id}" ${picked.has(x.k + ':' + x.id) ? 'checked' : ''} aria-label="Select"></td>` : ''}<td>${U.fmtD(x.date)}</td><td>${esc(x.what)}</td><td>${methodPill(x.method)}</td><td class="n"><b>${fmt(x.amount)}</b></td>${can ? `<td style="white-space:nowrap;text-align:right"><button class="btn sm" data-ed="${x.k}:${x.id}">Edit</button> <button class="btn sm danger" data-rm="${x.k}:${x.id}" aria-label="Delete">🗑</button></td>` : ''}</tr>`).join('')}
           </tbody></table></div>` : '<div class="empty">No payments recorded for this member yet.</div>') : ''}
         ${view === 'months' ? UI.table([{ label: 'Month', f: mo => mLabel(mo) }, { label: 'Expected', n: 1, f: mo => fmt(memberFee(m)) }, { label: 'Paid', n: 1, f: mo => fmt(paidFor(m.id, mo)) }, { label: 'Balance', n: 1, f: mo => fmt(Math.max(0, memberFee(m) - paidFor(m.id, mo))) }, { label: 'Status', f: mo => statusPill(monthStatus(m, mo)) }, { label: '', f: mo => can ? (paidFor(m.id, mo) > 0 ? `<button class="btn sm" data-em="${mo}">Edit / delete</button>` : '') + (paidFor(m.id, mo) < memberFee(m) ? ` <button class="btn sm pri" data-rp="${mo}">Record</button>` : '') : '' }], months.slice().reverse(), { empty: 'No months yet.' }) : ''}
-        ${view === 'con' ? UI.table([{ label: 'Contribution', f: c => esc(c.name) }, { label: 'Required', n: 1, f: c => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: c => fmt(cPaidBy(c.id, m.id)) }, { label: 'Balance', n: 1, f: c => c.perMember ? fmt(Math.max(0, c.perMember - cPaidBy(c.id, m.id))) : '—' }, { label: '', f: c => can ? `<button class="btn sm pri" data-cp="${c.id}">Record</button>` : '' }], CO(), { empty: 'No contributions set up.' }) : ''}`;
+        ${view === 'con' ? `${can ? '<div class="row" style="margin-bottom:8px"><button class="btn sm pri" id="mdCon">+ Record contribution</button><span class="small muted">Categories are managed in the Categories tab.</span></div>' : ''}` + UI.table([{ label: 'Category', f: c => `<b>${esc(c.name)}</b>${c.status === 'Closed' ? ' <span class="pill">closed</span>' : ''}<div class="small muted">${isOngoing(c) ? 'Ongoing' : 'Fundraising goal'}</div>` }, { label: 'Expected', n: 1, f: c => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: c => fmt(cPaidBy(c.id, m.id)) }, { label: 'Times', n: 1, f: c => CP().filter(p => p.contribId === c.id && p.memberId === m.id).length }, { label: 'Last paid', f: c => { const l = CP().filter(p => p.contribId === c.id && p.memberId === m.id).sort(U.by('date', -1))[0]; return l ? U.fmtD(l.date) : '—'; } }, { label: 'Balance', n: 1, f: c => c.perMember ? fmt(Math.max(0, c.perMember - cPaidBy(c.id, m.id))) : '—' }, { label: '', f: c => can && c.status !== 'Closed' ? `<button class="btn sm pri" data-cp="${c.id}">Record</button>` : '' }], CO().filter(c => c.status !== 'Closed' || cPaidBy(c.id, m.id) > 0).sort((a, b) => (isOngoing(b) - isOngoing(a)) || (a.name || '').localeCompare(b.name || '')), { empty: 'No contribution categories yet. Add them in the Categories tab.' }) : ''}`;
       body.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { view = b.dataset.mv; paint(); });
       body.querySelectorAll('[data-pk]').forEach(c => c.onchange = () => { c.checked ? picked.add(c.dataset.pk) : picked.delete(c.dataset.pk); paint(); });
       const all = body.querySelector('#mdAll'); if (all) all.onchange = () => { if (all.checked) es.forEach(x => picked.add(x.k + ':' + x.id)); else picked.clear(); paint(); };
@@ -154,10 +161,11 @@
       body.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const [k, x] = b.dataset.ed.split(':'); md.close(); if (k === 'p') editPayment(St.get('fin_payments', x), () => memberDetail(id, view)); else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c) contribPay(c, p); } });
       body.querySelectorAll('[data-em]').forEach(b => b.onclick = () => { md.close(); editMonth(m, b.dataset.em); });
       body.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { md.close(); payFee(m, [b.dataset.rp]); });
-      body.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { md.close(); const c = St.get('fin_contribs', b.dataset.cp); if (c) contribPay(c, { contribId: c.id, memberId: m.id, amount: c.perMember || '', date: U.today(), method: 'Cash' }); });
+      body.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => memberContrib(m, b.dataset.cp, paint));
+      const mc = body.querySelector('#mdCon'); if (mc) mc.onclick = () => memberContrib(m, null, paint);
     };
     paint();
-    const md = UI.modal({ title: m.name + ' · finance', wide: true, body, buttons: [{ label: 'Close' }, { label: 'Statement CSV', onClick: () => { UI.csvDownload(`Statement_${U.slug(m.name)}.csv`, ['Date paid', 'For', 'Type', 'Amount'], entries().map(x => [x.date, x.what, x.method, x.amount])).catch(UI.fail); return false; } }, ...(can ? [{ label: 'Finance details', onClick: () => setTimeout(() => memberFinEdit(m), 40) }, { label: 'Record fee payment', cls: 'pri', onClick: () => setTimeout(() => payFee(m), 40) }] : [])] });
+    const md = UI.modal({ title: m.name + ' · finance', wide: true, body, buttons: [{ label: 'Close' }, { label: 'Statement CSV', onClick: () => { UI.csvDownload(`Statement_${U.slug(m.name)}.csv`, ['Date paid', 'For', 'Type', 'Amount'], entries().map(x => [x.date, x.what, x.method, x.amount])).catch(UI.fail); return false; } }, ...(can ? [{ label: 'Finance details', onClick: () => setTimeout(() => memberFinEdit(m), 40) }, { label: 'Record contribution', onClick: () => { memberContrib(m, null, paint); return false; } }, { label: 'Record fee payment', cls: 'pri', onClick: () => setTimeout(() => payFee(m), 40) }] : [])] });
   }
   /** edit one fee payment entry (month, amount, date, type) */
   function editPayment(p, after) {
@@ -273,21 +281,47 @@
   // ---------- contributions / fundraising ----------
   function contribs(el) {
     const can = F.canEdit();
-    el.innerHTML = `<div class="row" style="margin-bottom:12px">${can ? '<button class="btn pri" id="cNew">New contribution / fundraising goal</button>' : ''}</div>` + (CO().length ? `<div class="grid g2">${CO().map(c => { const col = cCollected(c.id); const pct = c.target ? Math.min(100, Math.round(col / c.target * 100)) : 0; const payers = U.uniq(CP().filter(p => p.contribId === c.id).map(p => p.memberId)).length; return `<div class="card"><div class="row between"><h3 style="margin:0">${esc(c.name)}</h3><span class="pill ${c.status === 'Closed' ? '' : 'ok'}">${esc(c.status || 'Active')}</span></div><p class="small muted">${esc(c.description || '')}${c.eventId ? ' · for ' + esc((St.get('events', c.eventId) || {}).title || '') : ''}</p>
-      <div class="row between small"><b>${fmt(col)}</b><span>${pct}% of ${fmt(c.target)}</span></div>${UI.bar(pct, 'gold')}
+    el.innerHTML = `<div class="row" style="margin-bottom:12px">${can ? '<button class="btn pri" id="cNew">New fundraising goal</button><button class="btn" id="cNewO">New contribution category</button>' : ''}</div>` + (CO().length ? `<div class="grid g2">${CO().map(c => { const col = cCollected(c.id); const pct = c.target ? Math.min(100, Math.round(col / c.target * 100)) : 0; const payers = U.uniq(CP().filter(p => p.contribId === c.id).map(p => p.memberId)).length; return `<div class="card"><div class="row between"><h3 style="margin:0">${esc(c.name)}</h3><span class="pill ${c.status === 'Closed' ? '' : 'ok'}">${esc(c.status === 'Closed' ? 'Closed' : isOngoing(c) ? 'Ongoing' : 'Active')}</span></div><p class="small muted">${esc(c.description || '')}${c.eventId ? ' · for ' + esc((St.get('events', c.eventId) || {}).title || '') : ''}</p>
+      ${c.target ? `<div class="row between small"><b>${fmt(col)}</b><span>${pct}% of ${fmt(c.target)}</span></div>${UI.bar(pct, 'gold')}` : `<div class="row between small"><b>${fmt(col)}</b><span class="muted">${isOngoing(c) ? 'Ongoing contribution' : 'collected'}</span></div>`}
       <dl class="kv" style="margin-top:10px"><dt>Per member</dt><dd>${c.perMember ? fmt(c.perMember) : 'Flexible'}</dd><dt>Deadline</dt><dd>${U.fmtD(c.deadline)}</dd><dt>Contributed</dt><dd>${payers} of ${obligated().length} members</dd><dt>Responsible</dt><dd>${esc(c.responsible || '—')}</dd></dl>
       <div class="row" style="margin-top:10px"><button class="btn sm" data-cd="${c.id}">Payments</button>${can ? `<button class="btn sm pri" data-cp="${c.id}">Record payment</button><button class="btn sm" data-ce="${c.id}">Edit</button>` : ''}</div></div>`; }).join('')}</div>` : '<div class="empty">No contributions yet. Create one to track a fundraising goal.</div>');
-    const nb = el.querySelector('#cNew'); if (nb) nb.onclick = () => contribEdit();
+    const nb = el.querySelector('#cNew'); if (nb) nb.onclick = () => contribEdit(null, 'goal');
+    const no = el.querySelector('#cNewO'); if (no) no.onclick = () => contribEdit(null, 'ongoing');
     el.querySelectorAll('[data-ce]').forEach(b => b.onclick = () => contribEdit(St.get('fin_contribs', b.dataset.ce)));
     el.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => contribPay(St.get('fin_contribs', b.dataset.cp)));
     el.querySelectorAll('[data-cd]').forEach(b => b.onclick = () => contribDetail(St.get('fin_contribs', b.dataset.cd)));
   }
-  function contribEdit(c) {
-    c = c || { status: 'Active', start: U.today() };
-    UI.edit({ title: c.id ? c.name : 'New contribution', rec: c, fields: [{ k: 'name', label: 'Name', req: true, full: true }, { k: 'description', label: 'Description', full: true }, { k: 'target', label: 'Target amount', type: 'number', min: 0 }, { k: 'perMember', label: 'Required per member (optional)', type: 'number', min: 0 }, { k: 'start', label: 'Start date', type: 'date' }, { k: 'deadline', label: 'Deadline', type: 'date' }, { k: 'responsible', label: 'Responsible person' }, { k: 'eventId', label: 'For event (optional)', type: 'select', options: UI.opt.events() }, { k: 'status', label: 'Status', type: 'select', options: ['Active', 'Closed'], blank: false }],
-      onSave: v => { guard(); return St.put('fin_contribs', Object.assign({}, c, v, { perMember: v.perMember || null })); },
+  function contribEdit(c, kind) {
+    c = c || { status: 'Active', start: U.today(), kind: kind || 'goal' };
+    UI.edit({ title: c.id ? c.name : (c.kind === 'ongoing' ? 'New contribution category' : 'New fundraising goal'), rec: c, fields: [{ k: 'name', label: 'Name', req: true, full: true, placeholder: c.kind === 'ongoing' ? 'e.g. Tithe, Welfare, Thanksgiving, Building fund' : 'e.g. Christmas uniforms' }, { k: 'kind', label: 'Type', type: 'select', options: [['ongoing', 'Ongoing — members give any time, any amount'], ['goal', 'Fundraising goal — has a target / deadline']], blank: false, full: true }, { k: 'description', label: 'Description', full: true }, { k: 'target', label: 'Target amount', type: 'number', min: 0 }, { k: 'perMember', label: 'Required per member (optional)', type: 'number', min: 0 }, { k: 'start', label: 'Start date', type: 'date' }, { k: 'deadline', label: 'Deadline', type: 'date' }, { k: 'responsible', label: 'Responsible person' }, { k: 'eventId', label: 'For event (optional)', type: 'select', options: UI.opt.events() }, { k: 'status', label: 'Status', type: 'select', options: ['Active', 'Closed'], blank: false }],
+      onSave: v => { guard(); return St.put('fin_contribs', Object.assign({}, c, v, { perMember: v.perMember || null, target: v.target || null })); },
       deleteFn: c.id ? async () => { guard(); for (const p of CP().filter(p => p.contribId === c.id)) await St.del('fin_cpay', p.id, { audit: false }); await St.del('fin_contribs', c.id); } : null });
   }
+  /** record a contribution from one member: pick the category (or create one) */
+  function memberContrib(m, contribId, after) {
+    const cats = openCats();
+    const body = document.createElement('div');
+    body.innerHTML = `<div class="form">
+      <label class="f full"><span>Contribution category <b>*</b></span><select id="mcCat">${cats.map(c => `<option value="${c.id}" ${c.id === contribId ? 'selected' : ''}>${esc(c.name)}${c.perMember ? ' · ' + fmt(c.perMember) + ' each' : ''}</option>`).join('')}<option value="__new">+ New category…</option></select></label>
+      <label class="f full" id="mcNewWrap" hidden><span>New category name</span><input type="text" id="mcNew" placeholder="e.g. Tithe, Welfare, Thanksgiving"></label>
+      <label class="f"><span>Amount <b>*</b></span><input type="number" id="mcAmt" min="1"></label>
+      <label class="f"><span>Date paid</span><input type="date" id="mcDate" value="${U.today()}"></label>
+      <label class="f"><span>Payment type</span><select id="mcMeth">${F.METHODS.map(x => `<option>${esc(x)}</option>`).join('')}</select></label>
+      <label class="f full"><span>Note (optional)</span><input type="text" id="mcNote" placeholder="e.g. for October"></label></div>`;
+    const sel = body.querySelector('#mcCat'), amt = body.querySelector('#mcAmt');
+    const sync = () => { body.querySelector('#mcNewWrap').hidden = sel.value !== '__new'; const c = St.get('fin_contribs', sel.value); if (c && c.perMember) { const rest = Math.max(0, c.perMember - cPaidBy(c.id, m.id)); if (!amt.value) amt.value = rest || ''; } };
+    if (!cats.length) sel.value = '__new';
+    sel.onchange = sync; sync();
+    UI.modal({ title: 'Record contribution · ' + m.name, body, buttons: [{ label: 'Cancel' }, { label: 'Save', cls: 'pri', onClick: async () => {
+      guard();
+      let cid = sel.value;
+      if (cid === '__new') { const name = body.querySelector('#mcNew').value.trim(); if (!name) { UI.toast('Type a name for the new category.', true); return false; } const c = await St.put('fin_contribs', { name, kind: 'ongoing', status: 'Active', start: U.today() }, { summary: 'New contribution category ' + name }); cid = c.id; }
+      const a = +amt.value; if (!(a > 0)) { UI.toast('Enter the amount.', true); return false; }
+      await St.put('fin_cpay', { contribId: cid, memberId: m.id, amount: a, date: body.querySelector('#mcDate').value || U.today(), method: body.querySelector('#mcMeth').value, note: body.querySelector('#mcNote').value.trim() }, { summary: 'Contribution ' + m.name });
+      UI.toast('Contribution saved'); if (after) setTimeout(after, 60);
+    } }] });
+  }
+  F.memberContrib = memberContrib;
   function contribPay(c, rec) {
     rec = rec || { contribId: c.id, amount: c.perMember || '', date: U.today(), method: 'Cash' };
     UI.edit({ title: (rec.id ? 'Edit payment · ' : 'Record payment · ') + c.name, rec, fields: [{ k: 'memberId', label: 'Member', type: 'select', options: obligated().map(m => [m.id, m.name]), req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'date', label: 'Date', type: 'date', req: true }, methodField],
@@ -318,12 +352,12 @@
   }
   function incomeForm(rec) {
     rec = rec || { date: U.today(), category: 'Donation', method: 'Cash' };
-    UI.edit({ title: rec.id ? 'Edit income' : 'Record income', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: F.INCOME_CATS, blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'receivedFrom', label: 'Received from' }, { k: 'ref', label: 'Reference / receipt no.' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }],
+    UI.edit({ title: rec.id ? 'Edit income' : 'Record income', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.incomeCats(), rec.category), blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'receivedFrom', label: 'Received from' }, { k: 'ref', label: 'Reference / receipt no.' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }],
       onSave: v => { guard(); return St.put('fin_income', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: 'Income ' + v.category }); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_income', rec.id); } : null });
   }
   F.expenseForm = (rec, after) => {
     rec = Object.assign({ date: U.today(), category: 'Other', method: 'Cash' }, rec || {});
-    UI.edit({ title: rec.id ? 'Edit expense' : 'Record expense', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: F.EXPENSE_CATS, blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'paidTo', label: 'Paid to' }, { k: 'approvedBy', label: 'Approved by' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }, { k: 'deptId', label: 'Department (optional)', type: 'select', options: UI.opt.depts() }, { k: 'ref', label: 'Receipt / reference no.' }],
+    UI.edit({ title: rec.id ? 'Edit expense' : 'Record expense', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.expenseCats(), rec.category), blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'paidTo', label: 'Paid to' }, { k: 'approvedBy', label: 'Approved by' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }, { k: 'deptId', label: 'Department (optional)', type: 'select', options: UI.opt.depts() }, { k: 'ref', label: 'Receipt / reference no.' }],
       onSave: async v => { guard(); const saved = await St.put('fin_expenses', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: 'Expense ' + v.category }); if (after) await after(saved); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_expenses', rec.id); } : null });
   };
   function expenses(el) {
@@ -338,6 +372,39 @@
     el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ok">Cash ${fmt(t.cash)}</span><span class="pill info">Bank ${fmt(t.bank)}</span><span class="pill gold">Total ${fmt(t.total)}</span><button class="btn sm" id="lCsv">CSV</button></div>` +
       UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: r => r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc) }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Income', n: 1, f: r => r.inAmt ? `<span style="color:var(--ok)">${fmt(r.inAmt)}</span>` : '' }, { label: 'Expense', n: 1, f: r => r.outAmt ? `<span style="color:var(--bad)">${fmt(r.outAmt)}</span>` : '' }, { label: 'Cash bal.', n: 1, f: r => fmt(r.cashBal) }, { label: 'Bank bal.', n: 1, f: r => fmt(r.bankBal) }], rows.slice().reverse(), { empty: 'No transactions yet.' });
     el.querySelector('#lCsv').onclick = () => UI.csvDownload('AAC_Finance_Ledger.csv', ['Date', 'Category', 'Description', 'Method', 'Type', 'Income', 'Expense', 'Cash balance', 'Bank balance'], rows.map(r => [r.date, r.category, r.desc, r.method, bucket(r.method), r.inAmt || '', r.outAmt || '', r.cashBal, r.bankBal])).catch(UI.fail);
+  }
+
+  // ---------- categories ----------
+  function cats(el) {
+    const can = F.canEdit(); const st = St.get('fin_settings', 'main') || {};
+    const used = (c) => CP().filter(p => p.contribId === c.id).length;
+    const listCard = (title, key, list, defaults, usedIn) => `<div class="card"><h3>${title}</h3>
+      <div class="catlist">${list.map(n => `<span class="catchip">${esc(n)}${can ? `<button data-rmc="${key}" data-n="${esc(n)}" aria-label="Remove ${esc(n)}">✕</button>` : ''}</span>`).join('')}</div>
+      ${can ? `<div class="row" style="margin-top:10px"><input type="text" data-addin="${key}" placeholder="New category name" style="flex:1;min-width:160px"><button class="btn sm pri" data-add="${key}">Add</button>${JSON.stringify(list) !== JSON.stringify(defaults) ? `<button class="btn sm ghost" data-reset="${key}">Restore defaults</button>` : ''}</div>` : ''}
+      <p class="small muted" style="margin-top:8px">Removing a category doesn't change ${usedIn} already recorded with it.</p></div>`;
+    el.innerHTML = `<div class="card"><div class="row between"><h3 style="margin:0">Member contribution categories</h3>${can ? '<div class="row"><button class="btn sm pri" id="ccNew">+ Add category</button><button class="btn sm" id="ccGoal">+ Fundraising goal</button></div>' : ''}</div>
+        <p class="small muted">These appear on every member's finance page, so you can record contributions other than fees — e.g. Tithe, Welfare, Thanksgiving, Uniform, Building fund.</p>
+        ${UI.table([{ label: 'Category', f: c => `<b>${esc(c.name)}</b>${c.description ? `<div class="small muted">${esc(c.description)}</div>` : ''}` }, { label: 'Type', f: c => isOngoing(c) ? '<span class="pill info">Ongoing</span>' : '<span class="pill gold">Fundraising goal</span>' }, { label: 'Expected per member', n: 1, f: c => c.perMember ? fmt(c.perMember) : 'Any amount' }, { label: 'Collected', n: 1, f: c => fmt(cCollected(c.id)) }, { label: 'Payments', n: 1, f: c => used(c) }, { label: 'Status', f: c => c.status === 'Closed' ? '<span class="pill">Closed</span>' : '<span class="pill ok">Open</span>' },
+          { label: '', f: c => can ? `<span style="white-space:nowrap"><button class="btn sm" data-cce="${c.id}">Edit</button> ${c.status === 'Closed' ? `<button class="btn sm" data-cco="${c.id}">Reopen</button>` : `<button class="btn sm" data-ccc="${c.id}">Close</button>`} <button class="btn sm danger" data-ccd="${c.id}">🗑</button></span>` : '' }],
+          CO().slice().sort((a, b) => (a.status === 'Closed') - (b.status === 'Closed') || (isOngoing(b) - isOngoing(a)) || (a.name || '').localeCompare(b.name || '')), { empty: 'No contribution categories yet. Add one to start recording contributions from members.' })}
+        <p class="small muted" style="margin-top:8px"><b>Close</b> hides a category from new recordings but keeps its history. <b>🗑</b> deletes it together with its payments.</p></div>
+      <div class="grid g2" style="margin-top:14px">${listCard('Income categories (other income)', 'incomeCats', F.incomeCats(), F.INCOME_CATS, 'income')}${listCard('Expense categories', 'expenseCats', F.expenseCats(), F.EXPENSE_CATS, 'expenses')}</div>`;
+    const saveList = async (key, list) => { guard(); await St.put('fin_settings', Object.assign({}, St.get('fin_settings', 'main') || {}, { id: 'main', [key]: list }), { summary: 'Finance categories' }); A.render(); };
+    const cur = (key) => key === 'incomeCats' ? F.incomeCats() : F.expenseCats();
+    el.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => { const inp = el.querySelector(`[data-addin="${b.dataset.add}"]`); const n = inp.value.trim().replace(/\s+/g, ' '); if (!n) { inp.focus(); return; } const l = cur(b.dataset.add); if (l.some(x => x.toLowerCase() === n.toLowerCase())) { UI.toast('That category already exists.', true); return; } try { await saveList(b.dataset.add, l.concat([n])); UI.toast('Category added'); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-addin]').forEach(i => i.onkeydown = (e) => { if (e.key === 'Enter') el.querySelector(`[data-add="${i.dataset.addin}"]`).click(); });
+    el.querySelectorAll('[data-rmc]').forEach(b => b.onclick = async () => { const l = cur(b.dataset.rmc).filter(x => x !== b.dataset.n); if (!l.length) { UI.toast('Keep at least one category.', true); return; } try { await saveList(b.dataset.rmc, l); UI.toast('Removed ' + b.dataset.n); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { try { await saveList(b.dataset.reset, (b.dataset.reset === 'incomeCats' ? F.INCOME_CATS : F.EXPENSE_CATS).slice()); } catch (e) { UI.fail(e); } });
+    const cn = el.querySelector('#ccNew'); if (cn) cn.onclick = () => contribEdit(null, 'ongoing');
+    const cg = el.querySelector('#ccGoal'); if (cg) cg.onclick = () => contribEdit(null, 'goal');
+    el.querySelectorAll('[data-cce]').forEach(b => b.onclick = () => contribEdit(St.get('fin_contribs', b.dataset.cce)));
+    el.querySelectorAll('[data-ccc]').forEach(b => b.onclick = async () => { try { guard(); await St.patch('fin_contribs', b.dataset.ccc, { status: 'Closed' }); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-cco]').forEach(b => b.onclick = async () => { try { guard(); await St.patch('fin_contribs', b.dataset.cco, { status: 'Active' }); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-ccd]').forEach(b => b.onclick = async () => {
+      const c = St.get('fin_contribs', b.dataset.ccd); const n = used(c);
+      if (!(await UI.confirm(`Delete "${esc(c.name)}"${n ? ` and its <b>${n} payment${n === 1 ? '' : 's'}</b> (${fmt(cCollected(c.id))})` : ''}? This cannot be undone.${n ? '<br><span class="small muted">To keep the history, use Close instead.</span>' : ''}`, { ok: 'Delete', danger: true }))) return;
+      try { guard(); for (const p of CP().filter(p => p.contribId === c.id)) await St.del('fin_cpay', p.id, { audit: false }); await St.del('fin_contribs', c.id, { summary: 'Deleted category ' + c.name }); UI.toast('Category deleted'); } catch (e) { UI.fail(e); }
+    });
   }
 
   // ---------- reports ----------
@@ -457,8 +524,8 @@
         for (const r of rows.contributions || []) { const name = String(pick(r, ['name', 'contribution', 'title'])).trim(); if (!name) continue; if (CO().some(c => c.name.trim().toLowerCase() === name.toLowerCase())) { dup++; continue; } await St.put('fin_contribs', { name, description: String(pick(r, ['description'])), target: num(pick(r, ['target', 'targetamount'])), perMember: num(pick(r, ['requiredpermember', 'permember'])) || null, start: xd(pick(r, ['startdate', 'start'])) || U.today(), deadline: xd(pick(r, ['deadline', 'enddate'])), responsible: String(pick(r, ['responsible'])), status: 'Active' }, { audit: false }); added++; }
         for (const [i, r] of (rows.fee || []).entries()) { const m = findM(pick(r, ['memberid']), pick(r, ['member', 'membername', 'name'])); if (!m) { issues.push(`Fee Payments row ${i + 2}: member not found`); continue; } const amount = num(pick(r, ['amount', 'paid'])); if (amount <= 0) continue; let date = xd(pick(r, ['date', 'datepaid'])); let month = xm(pick(r, ['month', 'feemonth'])) || (date ? date.slice(0, 7) : ''); if (!month) { issues.push(`Fee Payments row ${i + 2}: month missing`); continue; } if (!date) date = month + '-01'; const method = xmeth(pick(r, MK)); if (P().some(p => p.memberId === m.id && p.month === month && +p.amount === amount && p.date === date && p.method === method)) { dup++; continue; } await St.put('fin_payments', { memberId: m.id, month, amount, date, method }, { audit: false }); added++; }
         for (const [i, r] of (rows.cpay || []).entries()) { const c = CO().find(x => x.name.trim().toLowerCase() === String(pick(r, ['contribution'])).trim().toLowerCase()); const m = findM(pick(r, ['memberid']), pick(r, ['member', 'membername'])); if (!c || !m) { issues.push(`Contribution Payments row ${i + 2}: ${!c ? 'contribution' : 'member'} not found`); continue; } const amount = num(pick(r, ['amount', 'paid'])); if (amount <= 0) continue; const date = xd(pick(r, ['date'])) || U.today(), method = xmeth(pick(r, MK)); if (CP().some(p => p.contribId === c.id && p.memberId === m.id && +p.amount === amount && p.date === date)) { dup++; continue; } await St.put('fin_cpay', { contribId: c.id, memberId: m.id, amount, date, method }, { audit: false }); added++; }
-        for (const r of rows.income || []) { const amount = num(pick(r, ['amount', 'total'])); if (amount <= 0) continue; const date = xd(pick(r, ['date'])) || U.today(), category = cat(pick(r, ['category', 'source']), F.INCOME_CATS), description = String(pick(r, ['description', 'details'])).trim(), method = xmeth(pick(r, MK)); if (INC().some(x => x.date === date && +x.amount === amount && x.category === category && (x.description || '') === description)) { dup++; continue; } await St.put('fin_income', { date, amount, category, description, method, receivedFrom: String(pick(r, ['receivedfrom', 'from'])), ref: String(pick(r, ['reference', 'ref', 'receiptno'])) }, { audit: false }); added++; }
-        for (const r of rows.expenses || []) { const amount = num(pick(r, ['amount', 'total'])); if (amount <= 0) continue; const date = xd(pick(r, ['date'])) || U.today(), category = cat(pick(r, ['category']), F.EXPENSE_CATS), description = String(pick(r, ['description', 'details'])).trim(), method = xmeth(pick(r, MK)); if (EXP().some(x => x.date === date && +x.amount === amount && x.category === category && (x.description || '') === description)) { dup++; continue; } await St.put('fin_expenses', { date, amount, category, description, method, paidTo: String(pick(r, ['paidto', 'payee'])), approvedBy: String(pick(r, ['approvedby'])) }, { audit: false }); added++; }
+        for (const r of rows.income || []) { const amount = num(pick(r, ['amount', 'total'])); if (amount <= 0) continue; const date = xd(pick(r, ['date'])) || U.today(), category = cat(pick(r, ['category', 'source']), F.incomeCats()), description = String(pick(r, ['description', 'details'])).trim(), method = xmeth(pick(r, MK)); if (INC().some(x => x.date === date && +x.amount === amount && x.category === category && (x.description || '') === description)) { dup++; continue; } await St.put('fin_income', { date, amount, category, description, method, receivedFrom: String(pick(r, ['receivedfrom', 'from'])), ref: String(pick(r, ['reference', 'ref', 'receiptno'])) }, { audit: false }); added++; }
+        for (const r of rows.expenses || []) { const amount = num(pick(r, ['amount', 'total'])); if (amount <= 0) continue; const date = xd(pick(r, ['date'])) || U.today(), category = cat(pick(r, ['category']), F.expenseCats()), description = String(pick(r, ['description', 'details'])).trim(), method = xmeth(pick(r, MK)); if (EXP().some(x => x.date === date && +x.amount === amount && x.category === category && (x.description || '') === description)) { dup++; continue; } await St.put('fin_expenses', { date, amount, category, description, method, paidTo: String(pick(r, ['paidto', 'payee'])), approvedBy: String(pick(r, ['approvedby'])) }, { audit: false }); added++; }
         for (const r of rows.bal || []) { const amount = num(pick(r, ['amount'])); if (!amount) continue; const t = String(pick(r, ['type', 'account'])).toLowerCase(); const type = t.includes('bank') || t.includes('mobile') ? 'Bank' : 'Cash'; const date = xd(pick(r, ['date'])) || U.today(); if (OP().some(o => o.type === type && +o.amount === amount && o.date === date)) { dup++; continue; } await St.put('fin_openings', { type, amount, date, note: String(pick(r, ['note', 'notes'])) }, { audit: false }); added++; }
         await St.audit('import', 'fin', 'excel', `Excel: ${added} added, ${dup} skipped`);
         UI.modal({ title: 'Import complete', body: `<p>${added} record(s) added · ${cache.created} new member(s) · ${cache.matched} matched · ${dup} already present (skipped).</p>${issues.length ? `<div class="banner warn">${issues.length} row(s) skipped:<br>${issues.slice(0, 8).map(esc).join('<br>')}</div>` : ''}`, buttons: [{ label: 'OK', cls: 'pri' }] });
