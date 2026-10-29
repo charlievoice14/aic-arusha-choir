@@ -474,6 +474,42 @@ table.t.mx th:first-child,table.t.mx td:first-child{min-width:220px;position:sti
 ::-webkit-scrollbar-button{display:none;width:0;height:0}
 /* on computers, long tab bars wrap onto a second line instead of being cut off */
 @media (min-width: 901px){ .tabs{flex-wrap:wrap;overflow:visible} }
+
+/* smooth tap feedback (no grey flash) */
+*{-webkit-tap-highlight-color:transparent}
+table.t tr.click td{transition:background-color .2s ease}
+/* member finance page: payment entries as a tidy list */
+.elist{display:flex;flex-direction:column;gap:8px}
+.eitem{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px 12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--glass);transition:background-color .2s,border-color .2s}
+.eitem.sel{background:var(--royal-soft);border-color:color-mix(in srgb,var(--royal) 55%,transparent)}
+.eitem .emain{min-width:0;display:flex;flex-direction:column;gap:4px}
+.eitem .emain b{font-size:.92rem;overflow-wrap:anywhere}
+.eitem .emain span{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.eitem .eamt{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.eitem .eact{display:flex;gap:6px}
+.eitem input[type=checkbox]{width:18px;height:18px}
+@media (max-width:640px){
+  /* list cards: whole card highlights smoothly when tapped */
+  .tw.resp table.t tr.click{cursor:pointer;transition:background-color .2s ease,transform .12s ease}
+  .tw.resp table.t tr.click:hover td,.tw.resp table.t tr.click:active td{background:transparent}
+  .tw.resp table.t tr.click:active{background:var(--royal-soft);transform:scale(.985)}
+  /* more compact cards */
+  .tw.resp table.t tr{padding:4px 12px;margin-bottom:8px}
+  .tw.resp table.t td{padding:5px 0}
+  .tw.resp table.t td::before{font-size:.66rem}
+  /* member page fits a phone */
+  .eitem{grid-template-columns:auto 1fr auto;padding:10px}
+  .eitem .eact{grid-column:2/-1;justify-content:flex-end}
+  .modal .stats{grid-template-columns:1fr 1fr;gap:8px}
+  .modal .stats .stat{padding:10px 12px}
+  .modal .stats .stat .v{font-size:1.05rem}
+  .modal .tabs{flex-wrap:wrap;width:100%}
+  .modal .tabs button{flex:1 1 auto}
+  .modal .kv{grid-template-columns:110px 1fr;font-size:.84rem}
+  .modal footer{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .modal footer .btn{width:100%;white-space:normal}
+  .modal footer .btn.pri{grid-column:1/-1;order:-1}
+}
 </style>
 </head>
 <body>
