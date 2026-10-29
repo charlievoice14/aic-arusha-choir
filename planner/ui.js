@@ -82,12 +82,21 @@
   UI.showErr = (root, errs) => { const e = root.querySelector('[data-err]'); if (e) e.innerHTML = errs.map(esc).join('<br>'); return !errs.length; };
 
   /** generic create/edit modal */
-  UI.edit = ({ title, fields, rec = {}, canEdit = true, onSave, extra = [], wide, after, validate, deleteFn }) => {
+  UI.edit = ({ title, fields, rec = {}, canEdit = true, onSave, extra = [], wide, after, validate, deleteFn, deleteLabel }) => {
     const body = document.createElement('div');
     body.innerHTML = UI.form(fields, rec) + (canEdit ? '' : '<p class="muted small">You have view-only access to this record.</p>');
     if (!canEdit) body.querySelectorAll('input,select,textarea').forEach(el => el.disabled = true);
     const buttons = [{ label: canEdit ? 'Cancel' : 'Close' }, ...extra];
-    if (canEdit && deleteFn) buttons.splice(1, 0, { label: 'Delete', cls: 'danger', onClick: async () => { if (await UI.confirm('Delete this record permanently? This cannot be undone.', { ok: 'Delete', danger: true })) { await deleteFn(); UI.toast('Deleted'); } else return false; } });
+    if (canEdit && deleteFn) {   // a clearly visible delete option inside the window too
+      const dz = document.createElement('div'); dz.className = 'del-zone';
+      dz.innerHTML = `<button type="button" class="btn danger del-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>${esc(deleteLabel || 'Delete this record')}</button><span class="small muted">Removes it permanently.</span>`;
+      dz.querySelector('button').onclick = async (e) => {
+        const btn = e.currentTarget; btn.disabled = true;
+        try { if (await UI.confirm('Delete this record permanently? This cannot be undone.', { ok: 'Delete', danger: true })) { await deleteFn(); UI.toast('Deleted'); const bg = btn.closest('.modal-bg'); if (bg) bg.remove(); A.rerender && A.rerender(); } }
+        catch (x) { UI.fail(x); } finally { btn.disabled = false; }
+      };
+      body.appendChild(dz);
+    }
     if (canEdit) buttons.push({
       label: 'Save', cls: 'pri', onClick: async ({ body: b }) => {
         const { vals, errs } = UI.read(b, fields);

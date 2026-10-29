@@ -42,13 +42,16 @@
   const monthIncome = (m) => INC().filter(i => inMonth(i.date, m)).reduce((s, i) => s + (+i.amount || 0), 0) + P().filter(p => p.month === m).reduce((s, p) => s + (+p.amount || 0), 0) + CP().filter(p => inMonth(p.date, m)).reduce((s, p) => s + (+p.amount || 0), 0);
   const monthExpense = (m) => EXP().filter(e => inMonth(e.date, m)).reduce((s, e) => s + (+e.amount || 0), 0);
   const mName = (id) => (St.get('members', id) || {}).name || 'Unknown member';
+  /** a member's name that opens their full finance page */
+  const nameLink = (id) => St.get('members', id) ? `<a href="#" class="mlink" data-mem="${esc(id)}">${esc(mName(id))}</a>` : esc(mName(id));
+  const bindNames = (root) => root.addEventListener('click', (e) => { const a = e.target.closest('.mlink'); if (!a) return; e.preventDefault(); e.stopPropagation(); memberDetail(a.dataset.mem); }, true);
   F.ledger = () => {
     const rows = [];
     OP().forEach(o => rows.push({ date: o.date, type: 'Balance', category: 'Balance recorded', desc: (o.type === 'Cash' ? 'Cash in hand' : 'Bank balance') + (o.note ? ' — ' + o.note : ''), method: o.type, inAmt: o.amount > 0 ? +o.amount : 0, outAmt: o.amount < 0 ? -o.amount : 0, coll: 'fin_openings', id: o.id }));
     INC().forEach(i => rows.push({ date: i.date, type: 'Income', category: i.category, desc: i.description || '—', method: i.method, inAmt: +i.amount || 0, outAmt: 0, coll: 'fin_income', id: i.id }));
     EXP().forEach(e => rows.push({ date: e.date, type: 'Expense', category: e.category, desc: e.description || '—', method: e.method, inAmt: 0, outAmt: +e.amount || 0, coll: 'fin_expenses', id: e.id }));
-    P().forEach(p => rows.push({ date: p.date, type: 'Income', category: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), method: p.method, inAmt: +p.amount || 0, outAmt: 0, coll: 'fin_payments', id: p.id }));
-    CP().forEach(p => rows.push({ date: p.date, type: 'Income', category: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, inAmt: +p.amount || 0, outAmt: 0, coll: 'fin_cpay', id: p.id }));
+    P().forEach(p => rows.push({ date: p.date, type: 'Income', category: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), mid: p.memberId, descRest: ' — ' + mLabel(p.month), method: p.method, inAmt: +p.amount || 0, outAmt: 0, coll: 'fin_payments', id: p.id }));
+    CP().forEach(p => rows.push({ date: p.date, type: 'Income', category: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), mid: p.memberId, descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, inAmt: +p.amount || 0, outAmt: 0, coll: 'fin_cpay', id: p.id }));
     rows.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     let c = 0, bk = 0; return rows.map(r => { const n = r.inAmt - r.outAmt; if (bucket(r.method) === 'Cash') c += n; else bk += n; return Object.assign(r, { cashBal: c, bankBal: bk, bal: c + bk }); });
   };
@@ -70,7 +73,7 @@
     el.innerHTML = `<div class="row between" style="margin-bottom:10px"><div class="small muted">${F.canEdit() ? 'You can record finance entries.' : 'View only: the Finance & Fundraising team records entries.'} All amounts in ${esc(St.cfg().currency || 'TZS')}.</div></div>
       <div class="tabs">${TABS.map(([k, t]) => `<button data-ft="${k}" class="${s.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="finBody"></div>`;
     el.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { s.tab = b.dataset.ft; A._animate = true; A.render(); });
-    const body = el.querySelector('#finBody');
+    const body = el.querySelector('#finBody'); bindNames(body);
     ({ dash, members, fees, contribs, income, expenses, ledger, reports, settings })[s.tab](body, s);
     A.Charts.bindTips(body); UI.bindGo(body);
   };
@@ -109,19 +112,60 @@
     let list = F.members().filter(m => { const st = status(m); if (s.mf === 'active' && st !== 'Active') return false; if (s.mf === 'pending' && st !== 'Pending') return false; if (s.mf === 'removed' && !m.finStatus) return false; if (s.mf === 'unpaid' && (m.finStatus || monthStatus(m, CUR()) !== 'Unpaid')) return false; if (s.mf === 'outstanding' && outstanding(m) <= 0) return false; if (s.q && !(m.name + ' ' + (m.memberCode || '')).toLowerCase().includes(s.q.toLowerCase())) return false; return true; });
     el.innerHTML = `<div class="banner info">A member becomes <b>Active</b> once they have fully paid ${F.set().threshold} months of fees. Until then they show as <b>Pending</b>. These are the same members as the rest of the planner. Add new members under Members.</div>
       <div class="filters"><label class="grow">Search<input type="search" id="fq" value="${esc(s.q)}" placeholder="Name or member ID"></label><label>Show${UI.sel('fmf', [['all', 'All'], ['active', 'Active'], ['pending', 'Pending'], ['removed', 'Inactive / suspended / former'], ['unpaid', 'Unpaid this month'], ['outstanding', 'Has outstanding balance']], s.mf, null)}</label></div>` +
-      UI.table([{ label: 'Name', f: m => `<b>${esc(m.name)}</b>` }, { label: 'Member ID', f: m => esc(m.memberCode || '—') }, { label: 'Section', f: m => (m.sections || []).map(x => UI.chip(x, L.sectionColor(x))).join(' ') || '—' }, { label: 'Status', f: m => statusPill(status(m)) }, { label: 'Months paid', n: 1, f: m => paidMonths(m) }, { label: 'Outstanding', n: 1, f: m => fmt(outstanding(m)) }], list, { click: 1, empty: 'No members match.' });
+      UI.table([{ label: 'Name', f: m => `<b>${nameLink(m.id)}</b>` }, { label: 'Member ID', f: m => esc(m.memberCode || '—') }, { label: 'Section', f: m => (m.sections || []).map(x => UI.chip(x, L.sectionColor(x))).join(' ') || '—' }, { label: 'Status', f: m => statusPill(status(m)) }, { label: 'Months paid', n: 1, f: m => paidMonths(m) }, { label: 'Outstanding', n: 1, f: m => fmt(outstanding(m)) }], list, { click: 1, empty: 'No members match.' });
     UI.bindFilters(el, s, { fq: 'q', fmf: 'mf' }, A.render);
     UI.bindRows(el, id => memberDetail(id));
   }
-  function memberDetail(id) {
+  /** Everything recorded for one member, with edit and delete for each entry. */
+  function memberDetail(id, tab) {
     const m = St.get('members', id); if (!m) return; const can = F.canEdit();
-    const months = feeMonths(m);
-    const body = `<dl class="kv"><dt>Member ID</dt><dd>${esc(m.memberCode || '—')}</dd><dt>Section</dt><dd>${esc((m.sections || []).join(', ') || '—')}</dd><dt>Phone</dt><dd>${esc(m.phone || '—')}</dd><dt>Joined</dt><dd>${U.fmtD(m.dateJoined)}</dd><dt>Monthly fee</dt><dd>${fmt(memberFee(m))}${m.monthlyFee ? '' : ' (standard)'}</dd><dt>Status</dt><dd>${statusPill(status(m))}</dd><dt>Months fully paid</dt><dd>${paidMonths(m)} of ${F.set().threshold} needed for Active</dd><dt>Outstanding</dt><dd>${fmt(outstanding(m))}</dd></dl>
-      <h3 style="margin:14px 0 6px">Monthly fee history</h3>${UI.table([{ label: 'Month', f: mo => mLabel(mo) }, { label: 'Expected', n: 1, f: mo => fmt(memberFee(m)) }, { label: 'Paid', n: 1, f: mo => fmt(paidFor(m.id, mo)) }, { label: 'Balance', n: 1, f: mo => fmt(Math.max(0, memberFee(m) - paidFor(m.id, mo))) }, { label: 'Status', f: mo => statusPill(monthStatus(m, mo)) }, { label: 'Type', f: mo => { const p = P().find(x => x.memberId === m.id && x.month === mo); return p ? methodPill(p.method) : '—'; } }, { label: '', f: mo => can ? (paidFor(m.id, mo) > 0 ? `<button class="btn sm" data-em="${mo}">Edit</button>` : '') + (paidFor(m.id, mo) < memberFee(m) ? ` <button class="btn sm pri" data-rp="${mo}">Record</button>` : '') : '' }], months.slice().reverse(), { empty: 'No months yet.' })}
-      <h3 style="margin:14px 0 6px">Contributions</h3>${UI.table([{ label: 'Contribution', f: c => esc(c.name) }, { label: 'Required', n: 1, f: c => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: c => fmt(cPaidBy(c.id, m.id)) }], CO(), { empty: 'None.' })}`;
-    const md = UI.modal({ title: m.name, wide: true, body, buttons: [{ label: 'Close' }, ...(can ? [{ label: 'Finance details', onClick: () => setTimeout(() => memberFinEdit(m), 40) }, { label: 'Record fee payment', cls: 'pri', onClick: () => setTimeout(() => payFee(m), 40) }] : [])] });
-    md.body.querySelectorAll('[data-em]').forEach(b => b.onclick = () => { md.close(); editMonth(m, b.dataset.em); });
-    md.body.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { md.close(); payFee(m, [b.dataset.rp]); });
+    let view = tab || 'pay'; const picked = new Set();
+    const body = document.createElement('div');
+    const entries = () => [
+      ...P().filter(p => p.memberId === id).map(p => ({ k: 'p', id: p.id, date: p.date, what: 'Membership fee · ' + mLabel(p.month), sort: p.month, method: p.method, amount: +p.amount || 0 })),
+      ...CP().filter(p => p.memberId === id).map(p => ({ k: 'c', id: p.id, date: p.date, what: 'Contribution · ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), sort: '', method: p.method, amount: +p.amount || 0 }))
+    ].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.sort || '').localeCompare(a.sort || ''));
+    const paint = () => {
+      const es = entries(); const months = feeMonths(m);
+      const feeTot = es.filter(x => x.k === 'p').reduce((t, x) => t + x.amount, 0), conTot = es.filter(x => x.k === 'c').reduce((t, x) => t + x.amount, 0);
+      [...picked].forEach(k => { if (!es.some(x => x.k + ':' + x.id === k)) picked.delete(k); });
+      body.innerHTML = `<div class="stats" style="margin-bottom:12px">${UI.stat(fmt(feeTot), 'Fees paid (all time)', { tone: 'ok' })}${UI.stat(fmt(conTot), 'Contributions paid', { tone: 'ok' })}${UI.stat(fmt(outstanding(m)), 'Outstanding', { tone: outstanding(m) > 0 ? 'bad' : 'ok' })}${UI.stat(paidMonths(m) + ' / ' + F.set().threshold, 'Months fully paid')}</div>
+        <dl class="kv"><dt>Member ID</dt><dd>${esc(m.memberCode || '—')}</dd><dt>Section</dt><dd>${esc((m.sections || []).join(', ') || '—')}</dd><dt>Phone</dt><dd>${esc(m.phone || '—')}</dd><dt>Joined</dt><dd>${U.fmtD(m.dateJoined)}</dd><dt>Monthly fee</dt><dd>${fmt(memberFee(m))}${m.monthlyFee ? '' : ' (standard)'}</dd><dt>Status</dt><dd>${statusPill(status(m))}</dd></dl>
+        <div class="tabs" style="margin-top:14px"><button data-mv="pay" class="${view === 'pay' ? 'on' : ''}">All payments (${es.length})</button><button data-mv="months" class="${view === 'months' ? 'on' : ''}">Month by month</button><button data-mv="con" class="${view === 'con' ? 'on' : ''}">Contributions</button></div>
+        ${view === 'pay' ? (es.length ? `
+          ${can ? `<div class="row" style="margin-bottom:8px"><label class="small row" style="gap:6px"><input type="checkbox" id="mdAll" ${picked.size && picked.size === es.length ? 'checked' : ''}> Select all</label><button class="btn sm danger" id="mdDel" ${picked.size ? '' : 'disabled'}>🗑 Delete selected${picked.size ? ' (' + picked.size + ')' : ''}</button></div>` : ''}
+          <div class="tw"><table class="t"><thead><tr>${can ? '<th></th>' : ''}<th>Date paid</th><th>For</th><th>Type</th><th style="text-align:right">Amount</th>${can ? '<th></th>' : ''}</tr></thead><tbody>
+          ${es.map(x => `<tr>${can ? `<td><input type="checkbox" data-pk="${x.k}:${x.id}" ${picked.has(x.k + ':' + x.id) ? 'checked' : ''} aria-label="Select"></td>` : ''}<td>${U.fmtD(x.date)}</td><td>${esc(x.what)}</td><td>${methodPill(x.method)}</td><td class="n"><b>${fmt(x.amount)}</b></td>${can ? `<td style="white-space:nowrap;text-align:right"><button class="btn sm" data-ed="${x.k}:${x.id}">Edit</button> <button class="btn sm danger" data-rm="${x.k}:${x.id}" aria-label="Delete">🗑</button></td>` : ''}</tr>`).join('')}
+          </tbody></table></div>` : '<div class="empty">No payments recorded for this member yet.</div>') : ''}
+        ${view === 'months' ? UI.table([{ label: 'Month', f: mo => mLabel(mo) }, { label: 'Expected', n: 1, f: mo => fmt(memberFee(m)) }, { label: 'Paid', n: 1, f: mo => fmt(paidFor(m.id, mo)) }, { label: 'Balance', n: 1, f: mo => fmt(Math.max(0, memberFee(m) - paidFor(m.id, mo))) }, { label: 'Status', f: mo => statusPill(monthStatus(m, mo)) }, { label: '', f: mo => can ? (paidFor(m.id, mo) > 0 ? `<button class="btn sm" data-em="${mo}">Edit / delete</button>` : '') + (paidFor(m.id, mo) < memberFee(m) ? ` <button class="btn sm pri" data-rp="${mo}">Record</button>` : '') : '' }], months.slice().reverse(), { empty: 'No months yet.' }) : ''}
+        ${view === 'con' ? UI.table([{ label: 'Contribution', f: c => esc(c.name) }, { label: 'Required', n: 1, f: c => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: c => fmt(cPaidBy(c.id, m.id)) }, { label: 'Balance', n: 1, f: c => c.perMember ? fmt(Math.max(0, c.perMember - cPaidBy(c.id, m.id))) : '—' }, { label: '', f: c => can ? `<button class="btn sm pri" data-cp="${c.id}">Record</button>` : '' }], CO(), { empty: 'No contributions set up.' }) : ''}`;
+      body.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { view = b.dataset.mv; paint(); });
+      body.querySelectorAll('[data-pk]').forEach(c => c.onchange = () => { c.checked ? picked.add(c.dataset.pk) : picked.delete(c.dataset.pk); paint(); });
+      const all = body.querySelector('#mdAll'); if (all) all.onchange = () => { if (all.checked) es.forEach(x => picked.add(x.k + ':' + x.id)); else picked.clear(); paint(); };
+      const del = async (keys) => {
+        if (!keys.length) return;
+        const list = keys.map(k => es.find(x => x.k + ':' + x.id === k)).filter(Boolean);
+        if (!(await UI.confirm(`Delete ${list.length === 1 ? 'this payment' : list.length + ' payments'}?<br><span class="small muted">${list.map(x => esc(x.what) + ' · ' + fmt(x.amount)).join('<br>')}</span><br><br>This cannot be undone.`, { ok: 'Delete', danger: true }))) return;
+        try { guard(); for (const x of list) await St.del(x.k === 'p' ? 'fin_payments' : 'fin_cpay', x.id, { summary: 'Deleted ' + x.what + ' · ' + m.name }); list.forEach(x => picked.delete(x.k + ':' + x.id)); UI.toast(list.length === 1 ? 'Payment deleted' : `${list.length} payments deleted`); paint(); }
+        catch (e) { UI.fail(e); }
+      };
+      body.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => del([b.dataset.rm]));
+      const bd = body.querySelector('#mdDel'); if (bd) bd.onclick = () => del([...picked]);
+      body.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const [k, x] = b.dataset.ed.split(':'); md.close(); if (k === 'p') editPayment(St.get('fin_payments', x), () => memberDetail(id, view)); else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c) contribPay(c, p); } });
+      body.querySelectorAll('[data-em]').forEach(b => b.onclick = () => { md.close(); editMonth(m, b.dataset.em); });
+      body.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => { md.close(); payFee(m, [b.dataset.rp]); });
+      body.querySelectorAll('[data-cp]').forEach(b => b.onclick = () => { md.close(); const c = St.get('fin_contribs', b.dataset.cp); if (c) contribPay(c, { contribId: c.id, memberId: m.id, amount: c.perMember || '', date: U.today(), method: 'Cash' }); });
+    };
+    paint();
+    const md = UI.modal({ title: m.name + ' · finance', wide: true, body, buttons: [{ label: 'Close' }, { label: 'Statement CSV', onClick: () => { UI.csvDownload(`Statement_${U.slug(m.name)}.csv`, ['Date paid', 'For', 'Type', 'Amount'], entries().map(x => [x.date, x.what, x.method, x.amount])).catch(UI.fail); return false; } }, ...(can ? [{ label: 'Finance details', onClick: () => setTimeout(() => memberFinEdit(m), 40) }, { label: 'Record fee payment', cls: 'pri', onClick: () => setTimeout(() => payFee(m), 40) }] : [])] });
+  }
+  /** edit one fee payment entry (month, amount, date, type) */
+  function editPayment(p, after) {
+    if (!p) return; const m = St.get('members', p.memberId);
+    UI.edit({ title: 'Edit fee payment · ' + mName(p.memberId), rec: { month: p.month, amount: p.amount, date: p.date, method: p.method || 'Cash' }, fields: [{ k: 'month', label: 'Month paid for', type: 'month', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'date', label: 'Date paid', type: 'date', req: true }, methodField],
+      validate: v => /^\d{4}-\d{2}$/.test(v.month || '') ? [] : ['Choose the month this payment is for.'],
+      onSave: async v => { guard(); await St.put('fin_payments', Object.assign({}, p, v), { summary: 'Fee edit ' + mName(p.memberId) + ' ' + v.month }); if (after) setTimeout(after, 60); },
+      deleteFn: async () => { guard(); await St.del('fin_payments', p.id, { summary: 'Fee deleted ' + mName(p.memberId) + ' ' + p.month }); if (after) setTimeout(after, 60); }, deleteLabel: 'Delete this payment' });
   }
   function memberFinEdit(m) {
     UI.edit({ title: 'Finance details · ' + m.name, rec: Object.assign({ finStatus: '' }, m), fields: [{ k: 'memberCode', label: 'Member ID', placeholder: 'CH-001' }, { k: 'gender', label: 'Gender', type: 'select', options: ['Female', 'Male'] }, { k: 'dateJoined', label: 'Date joined', type: 'date' }, { k: 'monthlyFee', label: `Monthly fee (blank = standard ${fmt(F.set().monthlyFee)})`, type: 'number', min: 0 }, { k: 'finStatus', label: 'Status override', type: 'select', options: OVERRIDES, blank: 'No override (automatic)' }],
@@ -182,7 +226,8 @@
   function editMonth(m, month) {
     const ex = P().filter(p => p.memberId === m.id && p.month === month); const tot = ex.reduce((s, p) => s + (+p.amount || 0), 0);
     UI.edit({ title: `Fee payment · ${m.name} · ${mLabel(month)}`, rec: { amount: tot, date: (ex[0] || {}).date || U.today(), method: (ex[0] || {}).method || 'Cash' }, fields: [{ k: 'amount', label: 'Amount paid (0 removes the payment)', type: 'number', min: 0 }, { k: 'date', label: 'Date', type: 'date' }, methodField],
-      onSave: async (v) => { guard(); for (const p of ex) await St.del('fin_payments', p.id, { audit: false }); if (+v.amount > 0) await St.put('fin_payments', { memberId: m.id, month, amount: +v.amount, date: v.date, method: v.method }, { summary: 'Fee edit ' + m.name + ' ' + month }); } });
+      onSave: async (v) => { guard(); for (const p of ex) await St.del('fin_payments', p.id, { audit: false }); if (+v.amount > 0) await St.put('fin_payments', { memberId: m.id, month, amount: +v.amount, date: v.date, method: v.method }, { summary: 'Fee edit ' + m.name + ' ' + month }); },
+      deleteFn: ex.length ? async () => { guard(); for (const p of ex) await St.del('fin_payments', p.id, { summary: 'Fee deleted ' + m.name + ' ' + month }); UI.toast(`Payment for ${mLabel(month)} deleted`); } : null, deleteLabel: 'Delete this payment' });
   }
 
   // ---------- fees ----------
@@ -196,10 +241,10 @@
       ${can && obl.some(owesHere) ? `<div class="row" style="margin-bottom:10px"><button class="btn" id="fAll">Select all who owe</button><button class="btn gold" id="fBulk" disabled>Mark selected as paid for ${mLabel(mo)}</button><span class="small muted" id="fSelN"></span></div>` : ''}` +
       UI.table([
         ...(can ? [{ label: '', f: m => owesHere(m) ? `<input type="checkbox" data-sel="${m.id}" aria-label="Select ${esc(m.name)}">` : '' }] : []),
-        { label: 'Member', f: m => `<b>${esc(m.name)}</b>` }, { label: 'Expected', n: 1, f: m => fmt(memberFee(m)) }, { label: 'Paid', n: 1, f: m => fmt(paidFor(m.id, mo)) }, { label: 'Balance', n: 1, f: m => fmt(Math.max(0, memberFee(m) - paidFor(m.id, mo))) }, { label: 'Status', f: m => statusPill(monthStatus(m, mo)) },
+        { label: 'Member', f: m => `<b>${nameLink(m.id)}</b>` }, { label: 'Expected', n: 1, f: m => fmt(memberFee(m)) }, { label: 'Paid', n: 1, f: m => fmt(paidFor(m.id, mo)) }, { label: 'Balance', n: 1, f: m => fmt(Math.max(0, memberFee(m) - paidFor(m.id, mo))) }, { label: 'Status', f: m => statusPill(monthStatus(m, mo)) },
         { label: 'Other months owed', f: m => { const n = feeMonths(m).filter(x => x !== mo && paidFor(m.id, x) < memberFee(m)).length; return n ? `<span class="pill bad">${n}</span>` : '<span class="muted small">—</span>'; } },
         { label: 'Type', f: m => { const p = P().find(x => x.memberId === m.id && x.month === mo); return p ? methodPill(p.method) : '—'; } },
-        { label: '', f: m => can ? `<button class="btn sm pri" data-pay="${m.id}">Record payment</button>` : '' }], obl, { click: 1, empty: 'No members yet.' });
+        { label: '', f: m => can ? (paidFor(m.id, mo) > 0 ? `<button class="btn sm" data-edm="${m.id}">Edit / delete</button> ` : '') + (owesHere(m) ? `<button class="btn sm pri" data-pay="${m.id}">Record payment</button>` : '') : '' }], obl, { click: 1, empty: 'No members yet.' });
     const go = (v) => { s.month = v; A._keepScroll = true; A.render(); };
     el.querySelector('#fmo').onchange = (e) => go(e.target.value || CUR());
     el.querySelector('#fPrev').onclick = () => go(prevM(mo));
@@ -208,6 +253,7 @@
     UI.bindRows(el, id => memberDetail(id));
     el.querySelectorAll('[data-sel]').forEach(c => c.onclick = (e) => e.stopPropagation());
     el.querySelectorAll('[data-pay]').forEach(b => b.onclick = (e) => { e.stopPropagation(); payFee(St.get('members', b.dataset.pay), [mo]); });
+    el.querySelectorAll('[data-edm]').forEach(b => b.onclick = (e) => { e.stopPropagation(); editMonth(St.get('members', b.dataset.edm), mo); });
     const bulk = el.querySelector('#fBulk');
     if (bulk) {
       const picked = () => [...el.querySelectorAll('[data-sel]:checked')].map(c => c.dataset.sel);
@@ -249,8 +295,9 @@
   }
   function contribDetail(c) {
     const pays = CP().filter(p => p.contribId === c.id).sort(U.by('date', -1));
-    const md = UI.modal({ title: c.name, wide: true, body: `<h3>Member status</h3>${UI.table([{ label: 'Member', f: m => esc(m.name) }, { label: 'Required', n: 1, f: m => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: m => fmt(cPaidBy(c.id, m.id)) }, { label: 'Balance', n: 1, f: m => c.perMember ? fmt(Math.max(0, c.perMember - cPaidBy(c.id, m.id))) : '—' }, { label: 'Status', f: m => { const p = cPaidBy(c.id, m.id); return statusPill(c.perMember ? (p <= 0 ? 'Unpaid' : p < c.perMember ? 'Partial' : 'Paid') : (p > 0 ? 'Paid' : 'Unpaid')); } }], obligated(), { empty: 'No members.' })}
-      <h3 style="margin-top:14px">Payments</h3>${UI.table([{ label: 'Member', f: p => esc(mName(p.memberId)) }, { label: 'Date', f: p => U.fmtD(p.date) }, { label: 'Amount', n: 1, f: p => fmt(p.amount) }, { label: 'Type', f: p => methodPill(p.method) }], pays, { click: F.canEdit() ? 1 : 0, empty: 'No payments yet.' })}`, buttons: [{ label: 'Close' }] });
+    const md = UI.modal({ title: c.name, wide: true, body: `<h3>Member status</h3>${UI.table([{ label: 'Member', f: m => nameLink(m.id) }, { label: 'Required', n: 1, f: m => c.perMember ? fmt(c.perMember) : '—' }, { label: 'Paid', n: 1, f: m => fmt(cPaidBy(c.id, m.id)) }, { label: 'Balance', n: 1, f: m => c.perMember ? fmt(Math.max(0, c.perMember - cPaidBy(c.id, m.id))) : '—' }, { label: 'Status', f: m => { const p = cPaidBy(c.id, m.id); return statusPill(c.perMember ? (p <= 0 ? 'Unpaid' : p < c.perMember ? 'Partial' : 'Paid') : (p > 0 ? 'Paid' : 'Unpaid')); } }], obligated(), { empty: 'No members.' })}
+      <h3 style="margin-top:14px">Payments</h3>${UI.table([{ label: 'Member', f: p => nameLink(p.memberId) }, { label: 'Date', f: p => U.fmtD(p.date) }, { label: 'Amount', n: 1, f: p => fmt(p.amount) }, { label: 'Type', f: p => methodPill(p.method) }], pays, { click: F.canEdit() ? 1 : 0, empty: 'No payments yet.' })}`, buttons: [{ label: 'Close' }] });
+    md.body.addEventListener('click', (e) => { const a = e.target.closest('.mlink'); if (!a) return; e.preventDefault(); e.stopPropagation(); md.close(); memberDetail(a.dataset.mem); }, true);
     UI.bindRows(md.body, id => { md.close(); contribPay(c, St.get('fin_cpay', id)); });
   }
 
@@ -258,16 +305,16 @@
   function incomeRows() {
     const r = [];
     INC().forEach(i => r.push({ id: 'i:' + i.id, date: i.date, cat: i.category, desc: i.description || '—', method: i.method, amount: +i.amount || 0, ev: i.eventId }));
-    P().forEach(p => r.push({ id: 'p:' + p.id, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month }));
-    CP().forEach(p => r.push({ id: 'c:' + p.id, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0 }));
+    P().forEach(p => r.push({ id: 'p:' + p.id, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), descRest: ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month }));
+    CP().forEach(p => r.push({ id: 'c:' + p.id, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0, mid: p.memberId }));
     return r.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }
   function income(el) {
     const rows = incomeRows(); const can = F.canEdit(); const tot = (b) => rows.filter(r => !b || bucket(r.method) === b).reduce((s, r) => s + r.amount, 0);
     el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="iNew">Record income</button>' : ''}<span class="small muted">Includes membership fees and contribution payments. Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))}</span></div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => esc(r.desc) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }], rows, { click: 1, empty: 'No income recorded yet.' });
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }], rows, { click: 1, empty: 'No income recorded yet.' });
     const nb = el.querySelector('#iNew'); if (nb) nb.onclick = () => incomeForm();
-    UI.bindRows(el, id => { const [t, x] = id.split(':'); if (t === 'i') incomeForm(St.get('fin_income', x)); else if (t === 'p') { const p = St.get('fin_payments', x); can ? editMonth(St.get('members', p.memberId), p.month) : memberDetail(p.memberId); } else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c && can) contribPay(c, p); } });
+    UI.bindRows(el, id => { const [t, x] = id.split(':'); if (t === 'i') incomeForm(St.get('fin_income', x)); else if (t === 'p') { const p = St.get('fin_payments', x); can ? editPayment(p) : memberDetail(p.memberId); } else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c && can) contribPay(c, p); } });
   }
   function incomeForm(rec) {
     rec = rec || { date: U.today(), category: 'Donation', method: 'Cash' };
@@ -289,7 +336,7 @@
   function ledger(el) {
     const rows = F.ledger(); const t = totals();
     el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ok">Cash ${fmt(t.cash)}</span><span class="pill info">Bank ${fmt(t.bank)}</span><span class="pill gold">Total ${fmt(t.total)}</span><button class="btn sm" id="lCsv">CSV</button></div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: r => esc(r.desc) }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Income', n: 1, f: r => r.inAmt ? `<span style="color:var(--ok)">${fmt(r.inAmt)}</span>` : '' }, { label: 'Expense', n: 1, f: r => r.outAmt ? `<span style="color:var(--bad)">${fmt(r.outAmt)}</span>` : '' }, { label: 'Cash bal.', n: 1, f: r => fmt(r.cashBal) }, { label: 'Bank bal.', n: 1, f: r => fmt(r.bankBal) }], rows.slice().reverse(), { empty: 'No transactions yet.' });
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: r => r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc) }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Income', n: 1, f: r => r.inAmt ? `<span style="color:var(--ok)">${fmt(r.inAmt)}</span>` : '' }, { label: 'Expense', n: 1, f: r => r.outAmt ? `<span style="color:var(--bad)">${fmt(r.outAmt)}</span>` : '' }, { label: 'Cash bal.', n: 1, f: r => fmt(r.cashBal) }, { label: 'Bank bal.', n: 1, f: r => fmt(r.bankBal) }], rows.slice().reverse(), { empty: 'No transactions yet.' });
     el.querySelector('#lCsv').onclick = () => UI.csvDownload('AAC_Finance_Ledger.csv', ['Date', 'Category', 'Description', 'Method', 'Type', 'Income', 'Expense', 'Cash balance', 'Bank balance'], rows.map(r => [r.date, r.category, r.desc, r.method, bucket(r.method), r.inAmt || '', r.outAmt || '', r.cashBal, r.bankBal])).catch(UI.fail);
   }
 
