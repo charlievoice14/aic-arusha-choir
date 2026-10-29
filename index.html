@@ -3120,6 +3120,18 @@ function buildNotifications(){
     if(now >= opens) out.push({ id: 's:' + s.id + ':open', kind: 'sched', at: opens, title: `🎶 ${s.title} — check-in is open`, body: `Starts at ${s.startTime}. Scan the QR code at the venue to check in.`, tab: 'mahudhurio' });
     if(now >= st && sessionState(s) !== 'closed') out.push({ id: 's:' + s.id + ':start', kind: 'sched', at: st, title: `⏰ ${s.title} is starting now`, body: `Please check in if you haven't yet. After ${lateAfterMin()} minutes you'll be marked late.`, tab: 'mahudhurio' });
   });
+  const weekAgo = Date.now() - 7*86400000;
+  (data.events || []).forEach(ev=>{
+    if(!ev.createdAt || ev.createdAt < weekAgo || ev.createdBy === loggedInMember.id) return;
+    out.push({ id: 'e:' + ev.id, kind: 'ann', at: ev.createdAt, title: '🎉 New event: ' + (ev.title || 'Choir event'), body: [ev.date, ev.time, ev.venue].filter(Boolean).join(' · '), tab: 'events' });
+  });
+  (Array.isArray(data.excuses) ? data.excuses : []).forEach(x=>{
+    const req = x.requestedAt ? new Date(x.requestedAt).getTime() : 0, dec = x.decidedAt ? new Date(x.decidedAt).getTime() : 0;
+    if(isRealAdmin() && x.status === 'pending' && req > weekAgo && x.memberId !== loggedInMember.id)
+      out.push({ id: 'xr:' + x.id, kind: 'sched', at: req, title: '🙋 Ruhusa request from ' + (x.memberName || 'a member'), body: `${x.title || 'Rehearsal'}${x.date ? ' on ' + x.date : ''}${x.reason ? ': ' + x.reason : ''}`, tab: 'mahudhurio' });
+    if(x.memberId === loggedInMember.id && (x.status === 'approved' || x.status === 'declined') && dec > weekAgo)
+      out.push({ id: 'xd:' + x.id + ':' + x.status, kind: 'sched', at: dec, title: x.status === 'approved' ? '✅ Your ruhusa was approved' : '❌ Your ruhusa was declined', body: `${x.title || 'Rehearsal'}${x.date ? ' on ' + x.date : ''}`, tab: 'mahudhurio' });
+  });
   myNotices.forEach(n=>{
     const t = discType(n.type);
     out.push({ id: 'd:' + n.id, kind: 'notice', at: n.createdAt, title: `📌 New notice from the choir leadership`, body: `${t[1]}: ${n.note}`, tab: 'home' });
@@ -3216,6 +3228,11 @@ function openNotiPanel(){
           <div class="li-sub">${pushHelpText()}</div></div>
         <label class="switch"><input type="checkbox" id="noti-switch" ${notifOn && perm === 'granted' ? 'checked' : ''} ${perm === 'unsupported' || perm === 'denied' ? 'disabled' : ''}><i></i></label>
       </div>
+      ${pushActive() ? `<div class="noti-settings">
+        <div style="flex:1;min-width:0;"><div class="li-main">Chat messages</div>
+          <div class="li-sub">Get a notification when someone writes in the choir chat.</div></div>
+        <label class="switch"><input type="checkbox" id="chat-switch" ${chatPushOff() ? '' : 'checked'}><i></i></label>
+      </div>` : ''}
       <div class="noti-list">
         ${list.length ? list.map(n=>`
           <button class="noti-item ${n.at > seen ? 'new' : ''}" data-noti-tab="${n.tab}">
@@ -3231,6 +3248,8 @@ function openNotiPanel(){
   root.querySelector('.noti-backdrop').onclick = close;
   root.querySelector('#noti-close').onclick = close;
   root.querySelectorAll('[data-noti-tab]').forEach(b=>{ b.onclick = ()=>{ close(); jumpTo(b.dataset.notiTab); }; });
+  const cs = root.querySelector('#chat-switch');
+  if(cs) cs.onchange = async ()=>{ lsSet(CHAT_PUSH_KEY, cs.checked ? null : '1'); await registerPush(true); showToast(cs.checked ? 'Chat notifications on' : 'Chat notifications off'); };
   const sw = root.querySelector('#noti-switch');
   if(sw) sw.onchange = async ()=>{
     if(sw.checked){
@@ -3324,6 +3343,8 @@ const PUSH_TOKEN_KEY = 'choir_push_token';
 const PUSH_SIG_KEY = 'choir_push_sig';
 const PUSH_AT_KEY = 'choir_push_at';
 const PUSH_HINT_KEY = 'choir_push_hint_off';
+const CHAT_PUSH_KEY = 'choir_chat_push_off';
+function chatPushOff(){ return lsGet(CHAT_PUSH_KEY) === '1'; }
 let pushToken = lsGet(PUSH_TOKEN_KEY) || '';
 let pushBusy = false;
 
@@ -3358,7 +3379,7 @@ async function registerPush(force){
     }
     if(!token) return false;
     if(pushToken && pushToken !== token){ try{ await fsDb.collection('pushTokens').doc(pushToken).delete(); }catch(e){} }
-    await fsDb.collection('pushTokens').doc(token).set({ token, uid: fsUid, memberId: loggedInMember.id, platform, at: Date.now() });
+    await fsDb.collection('pushTokens').doc(token).set({ token, uid: fsUid, memberId: loggedInMember.id, platform, at: Date.now(), chatOff: chatPushOff() });
     pushToken = token; lsSet(PUSH_TOKEN_KEY, token); lsSet(PUSH_SIG_KEY, token + sig); lsSet(PUSH_AT_KEY, String(Date.now()));
     if(document.querySelector('.push-hint') && !isEditingField()) render(true);
     return true;
@@ -3399,7 +3420,7 @@ function pushHelpText(){
   if(isIOS() && perm === 'unsupported') return 'Your iPhone needs iOS 16.4 or newer for notifications. Update it in Settings → General → Software Update, then open the choir app again.';
   if(perm === 'unsupported') return 'This browser can\'t show phone notifications. You\'ll still see them here.';
   if(pushActive()) return 'On — you\'ll be notified even when the app is closed.';
-  return 'Announcements and when rehearsals or services start — even when the app is closed.';
+  return 'Announcements, rehearsal reminders, new events, ruhusa replies and chat — even when the app is closed.';
 }
 function pushHintHtml(){
   if(window.ChoirDesktop) return '';
@@ -5244,7 +5265,7 @@ function attachHandlers(){
     const date = document.getElementById('ev-date').value;
     if(!title || !date){ document.getElementById('ev-title').focus(); return; }
     data.events.push({
-      id: uid(), title, date,
+      id: uid(), title, date, createdAt: Date.now(), createdBy: loggedInMember.id,
       time: document.getElementById('ev-time').value,
       venue: document.getElementById('ev-venue').value.trim(),
       type: document.getElementById('ev-type').value,
