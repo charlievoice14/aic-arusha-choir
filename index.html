@@ -3125,6 +3125,10 @@ function buildNotifications(){
     if(!ev.createdAt || ev.createdAt < weekAgo || ev.createdBy === loggedInMember.id) return;
     out.push({ id: 'e:' + ev.id, kind: 'ann', at: ev.createdAt, title: '🎉 New event: ' + (ev.title || 'Choir event'), body: [ev.date, ev.time, ev.venue].filter(Boolean).join(' · '), tab: 'events' });
   });
+  (data.schedule || []).forEach(ev=>{
+    if(!ev.createdAt || ev.createdAt < weekAgo || ev.createdBy === loggedInMember.id) return;
+    out.push({ id: 'sn:' + ev.id, kind: 'sched', at: ev.createdAt, title: '🗓 New on the schedule: ' + (ev.title || 'Rehearsal'), body: ev.date ? `${ev.date} · ${ev.time}` : `Every ${ev.day} · ${ev.time}`, tab: 'ratiba' });
+  });
   (Array.isArray(data.excuses) ? data.excuses : []).forEach(x=>{
     const req = x.requestedAt ? new Date(x.requestedAt).getTime() : 0, dec = x.decidedAt ? new Date(x.decidedAt).getTime() : 0;
     if(isRealAdmin() && x.status === 'pending' && req > weekAgo && x.memberId !== loggedInMember.id)
@@ -3420,7 +3424,7 @@ function pushHelpText(){
   if(isIOS() && perm === 'unsupported') return 'Your iPhone needs iOS 16.4 or newer for notifications. Update it in Settings → General → Software Update, then open the choir app again.';
   if(perm === 'unsupported') return 'This browser can\'t show phone notifications. You\'ll still see them here.';
   if(pushActive()) return 'On — you\'ll be notified even when the app is closed.';
-  return 'Announcements, rehearsal reminders, new events, ruhusa replies and chat — even when the app is closed.';
+  return 'Announcements, schedule and rehearsal reminders, new events, ruhusa replies and chat — even when the app is closed.';
 }
 function pushHintHtml(){
   if(window.ChoirDesktop) return '';
@@ -5048,12 +5052,12 @@ function attachHandlers(){
     if(mode === 'date'){
       const dateVal = document.getElementById('sch-date').value;
       if(!dateVal){ showAlertModal('Please choose a date.'); return; }
-      data.schedule.push({ id: uid(), type, title, date: dateVal, day: weekdayOf(dateVal), time });
+      data.schedule.push({ id: uid(), type, title, date: dateVal, day: weekdayOf(dateVal), time, createdAt: Date.now(), createdBy: loggedInMember.id });
     } else {
       const checkedDays = Array.from(document.querySelectorAll('.sch-day-box:checked')).map(cb=>cb.value);
       if(!checkedDays.length){ showAlertModal('Please tick at least one day.'); return; }
       checkedDays.forEach(day=>{
-        data.schedule.push({ id: uid(), type, title, day, time });
+        data.schedule.push({ id: uid(), type, title, day, time, createdAt: Date.now(), createdBy: loggedInMember.id });
       });
     }
     saveData(); render();
