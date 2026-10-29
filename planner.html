@@ -464,6 +464,16 @@ table.t.mx th:first-child,table.t.mx td:first-child{min-width:220px;position:sti
 @media (min-width: 901px) and (max-width: 1199px){ html{zoom:.84} }
 @media (min-width: 1200px) and (max-width: 1439px){ html{zoom:.9} }
 @media (min-width: 901px) and (max-height: 760px){ html{zoom:.82} }
+
+/* tidy scrollbars (Windows shows thick grey ones by default) */
+*{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--fg) 22%,transparent) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--fg) 20%,transparent);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--fg) 35%,transparent)}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+/* on computers, long tab bars wrap onto a second line instead of being cut off */
+@media (min-width: 901px){ .tabs{flex-wrap:wrap;overflow:visible} }
 </style>
 </head>
 <body>
