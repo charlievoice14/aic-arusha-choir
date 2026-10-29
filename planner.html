@@ -423,6 +423,19 @@ h1,h2,h3{font-weight:600;letter-spacing:-.01em}
 .sp-songs tr.sp-row input[type=checkbox]{width:18px;height:18px;cursor:pointer}
 .sp-songs tr.sp-row input[type=number]:disabled{opacity:.45}
 #spList{overscroll-behavior:contain}
+/* fee payment month picker */
+.fy{display:flex;gap:10px;align-items:flex-start;margin:6px 0}
+.fy>b{min-width:42px;padding-top:7px;font-size:.82rem;color:var(--muted)}
+.fmonths{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;flex:1}
+@media (min-width:700px){.fmonths{grid-template-columns:repeat(12,minmax(0,1fr))}}
+.fm{position:relative;border:1px solid var(--line-2);background:var(--surface-2);color:var(--fg);border-radius:10px;padding:7px 0;font:inherit;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+.fm:active{transform:scale(.94)}
+.fm.u{border-color:color-mix(in srgb,var(--bad) 55%,transparent)}
+.fm.p{border-color:color-mix(in srgb,var(--warn) 60%,transparent)}
+.fm.d{border-color:color-mix(in srgb,var(--ok) 55%,transparent);color:var(--muted)}
+.fm.now{box-shadow:0 0 0 1px var(--fg) inset}
+.fm i{font-style:normal;font-size:.68rem;margin-left:2px}
+.fm.on{background:var(--royal);border-color:var(--royal);color:var(--on-pri)}
 /* permission matrix: keep the permission names readable and in view */
 table.t.mx th:first-child,table.t.mx td:first-child{min-width:220px;position:sticky;left:0;z-index:1;background:var(--surface)}
 /* direct marking in the "when to practise each song" grid */
@@ -486,5 +499,6 @@ table.t.mx th:first-child,table.t.mx td:first-child{min-width:220px;position:sti
 <script src="planner/m_reports.js"></script>
 <script src="planner/m_admin.js"></script>
 <script src="planner/boot.js"></script>
+<script src="js/pull-refresh.js"></script>
 </body>
 </html>

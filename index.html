@@ -3491,6 +3491,8 @@ document.addEventListener('click', (e)=>{
   if(e.target.closest('#theme-toggle, #side-theme')){ e.preventDefault(); toggleTheme(); }
 });
 setTheme(document.documentElement.classList.contains('light'));
+/* pull-to-refresh is paused while scanning, playing a song or in the chat */
+window.ptrBlocked = () => !!(scannerOpen || songViewId || currentTab === 'chat');
 
 /* ---------------- PROFILE EDIT ---------------- */
 function openProfileEditor(memberId){
@@ -5506,5 +5508,6 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 </script>
+<script src="js/pull-refresh.js"></script>
 </body>
 </html>
