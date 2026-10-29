@@ -50,7 +50,7 @@
     if (window.innerWidth <= 900 || document.body.classList.contains('collapsed')) { root.style.removeProperty('--side-w'); return; }
     const foot = side.querySelector('.foot'); if (foot) foot.style.display = 'none';   // the footer text wraps; size by the menu
     side.style.width = 'max-content';
-    const w = Math.ceil(side.getBoundingClientRect().width) + 6;
+    const w = side.offsetWidth + 6;   // layout size, unaffected by the small-screen zoom
     side.style.width = ''; if (foot) foot.style.display = '';
     root.style.setProperty('--side-w', Math.max(210, Math.min(360, w)) + 'px');
   }

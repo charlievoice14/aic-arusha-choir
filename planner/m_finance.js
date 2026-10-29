@@ -257,7 +257,7 @@
     const exp = obl.reduce((t, m) => t + memberFee(m), 0), col = obl.reduce((t, m) => t + paidFor(m.id, mo), 0);
     const owesHere = (m) => paidFor(m.id, mo) < memberFee(m);
     el.innerHTML = `<div class="filters" style="align-items:center">
-        <div class="row" style="gap:6px"><button class="btn sm" id="fPrev" aria-label="Previous month">‹</button><label style="min-width:150px">Month<input type="month" id="fmo" value="${mo}"></label><button class="btn sm" id="fNext" aria-label="Next month">›</button>${mo !== CUR() ? '<button class="btn sm ghost" id="fNow">This month</button>' : ''}</div>
+        <div class="row" style="gap:6px;flex:0 0 auto;flex-wrap:nowrap;align-items:flex-end"><button class="btn sm" id="fPrev" aria-label="Previous month" style="height:38px">‹</button><label style="min-width:160px;flex:0 0 170px">Month<input type="month" id="fmo" value="${mo}"></label><button class="btn sm" id="fNext" aria-label="Next month" style="height:38px">›</button>${mo !== CUR() ? '<button class="btn sm ghost" id="fNow">This month</button>' : ''}</div>
         <span class="small muted">${mLabel(mo)} · Standard fee ${fmt(F.set().monthlyFee)} · Expected ${fmt(exp)} · Collected ${fmt(col)} · Outstanding ${fmt(Math.max(0, exp - col))}</span></div>
       ${can && obl.some(owesHere) ? `<div class="row" style="margin-bottom:10px"><button class="btn" id="fAll">Select all who owe</button><button class="btn gold" id="fBulk" disabled>Mark selected as paid for ${mLabel(mo)}</button><span class="small muted" id="fSelN"></span></div>` : ''}` +
       UI.table([

@@ -133,7 +133,7 @@ body.collapsed .main{margin-left:92px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .row.between{justify-content:space-between}
 .spacer{flex:1}
-input[type=text],input[type=search],input[type=date],input[type=time],input[type=number],input[type=email],input[type=tel],input[type=url],select,textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%;transition:border-color .2s,box-shadow .2s}
+input[type=text],input[type=search],input[type=date],input[type=month],input[type=time],input[type=number],input[type=email],input[type=tel],input[type=url],select,textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%;transition:border-color .2s,box-shadow .2s}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--royal);box-shadow:0 0 0 3px var(--royal-soft)}
 textarea{min-height:72px;resize:vertical}
 .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:end}
@@ -459,6 +459,11 @@ table.t.mx th:first-child,table.t.mx td:first-child{min-width:220px;position:sti
 .matrix.editable td.ed:hover{box-shadow:0 0 0 2px var(--royal) inset}
 .matrix.editable td.ed:active{transform:scale(.9)}
 .matrix.editable td.ed:not(.on):hover::after{content:"+";color:var(--muted);font-weight:700}
+
+/* Smaller computer screens (and Windows display scaling): show everything a little smaller so more fits */
+@media (min-width: 901px) and (max-width: 1199px){ html{zoom:.84} }
+@media (min-width: 1200px) and (max-width: 1439px){ html{zoom:.9} }
+@media (min-width: 901px) and (max-height: 760px){ html{zoom:.82} }
 </style>
 </head>
 <body>
