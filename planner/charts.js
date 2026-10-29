@@ -26,9 +26,15 @@
       const d = a >= Math.PI * 2 - 0.001 ? `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx - 0.01} ${cy - R} L ${cx - 0.01} ${cy - r} A ${r} ${r} 0 1 0 ${cx} ${cy - r} Z` : `M ${p(R, s)} A ${R} ${R} 0 ${large} 1 ${p(R, e)} L ${p(r, e)} A ${r} ${r} 0 ${large} 0 ${p(r, s)} Z`;
       return `<path d="${d}" fill="${x.color || C.color(i)}" data-tip="${esc(x.label)}: <b>${x.value}</b> (${Math.round(x.value / tot * 100)}%)" ${x.go ? `data-go='${esc(JSON.stringify(x.go))}'` : ''}/>`;
     }).join('') : `<circle cx="${cx}" cy="${cy}" r="${(R + r) / 2}" fill="none" stroke="var(--line)" stroke-width="${R - r}"/>`;
-    const lg = items.map((x, i) => `<div ${x.go ? `data-go='${esc(JSON.stringify(x.go))}' style="cursor:pointer"` : ''}><i style="background:${x.color || C.color(i)}"></i><span>${esc(x.label)}</span><span class="num">${x.value}${tot ? ` <span class="muted">${Math.round(x.value / tot * 100)}%</span>` : ''}</span></div>`).join('');
-    return `<div class="donut-wrap"><svg viewBox="0 0 150 150" role="img" aria-label="${esc(center + ' ' + (sub || ''))}">${arcs}<text x="75" y="74" text-anchor="middle" style="font-size:22px;fill:var(--fg);font-family:var(--f-mono)">${esc(center)}</text><text x="75" y="92" text-anchor="middle" style="font-size:10px">${esc(sub || '')}</text></svg><div class="lg">${lg}</div></div>`;
+    const lg = items.map((x, i) => `<div ${x.go ? `data-go='${esc(JSON.stringify(x.go))}' style="cursor:pointer"` : ''}><i style="background:${x.color || C.color(i)}"></i><span class="lbl">${esc(x.label)}</span><span class="num">${U.num(x.value)}${tot ? `<span class="muted pct">${Math.round(x.value / tot * 100)}%</span>` : ''}</span></div>`).join('');
+    // big totals are shortened in the middle (12.4B, 1.02M) so they fit inside the ring; the full figure is in the tooltip
+    const raw = Number(String(center).replace(/[^0-9.-]/g, ''));
+    const short = String(center).length > 6 && isFinite(raw) ? C.compact(raw) : String(center);
+    const fs = short.length <= 3 ? 24 : short.length <= 5 ? 20 : 16;
+    return `<div class="donut-wrap"><svg viewBox="0 0 150 150" role="img" aria-label="${esc(center + ' ' + (sub || ''))}">${arcs}<text x="75" y="${74 + (fs - 22) / 3}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--fg);font-family:var(--f-mono)"><title>${esc(center)}</title>${esc(short)}</text><text x="75" y="93" text-anchor="middle" style="font-size:9.5px">${esc(sub || '')}</text></svg><div class="lg">${lg}</div></div>`;
   };
+  /** 12435424624 → "12.4B", 1020000 → "1.02M", 96000 → "96K" */
+  C.compact = (n) => { const a = Math.abs(n); const f = (v, u) => (v >= 100 ? Math.round(v) : v >= 10 ? +v.toFixed(1) : +v.toFixed(2)) + u; return a >= 1e9 ? f(n / 1e9, 'B') : a >= 1e6 ? f(n / 1e6, 'M') : a >= 1e4 ? f(n / 1e3, 'K') : U.num(n); };
   const niceMax = (v) => { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; };
   /** vertical bars, one series: labels[], values[], opts {unit, highlight: index, color} */
   C.bars = (labels, values, o = {}) => {
