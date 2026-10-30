@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="AIC Choir">
+<meta name="apple-mobile-web-app-title" content="AIC Arusha Choir">
 <meta name="theme-color" content="#12264A">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -190,6 +190,9 @@ input,textarea,select{ font-size:16px !important; }
   .announce .a-row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
 
 
+  .pin-val{font-family:ui-monospace,Menlo,monospace;letter-spacing:.18em}
+  .pin-eye{background:none;border:0;color:var(--primary);font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:0 4px}
+  .pin-now{margin:-4px 0 12px;font-size:15px}
   input[type=password]{background:var(--card2);border:1px solid var(--border);color:var(--text);}
   /* ===== Auth screens (welcome / sign in / sign up) ===== */
   .auth{position:relative;min-height:calc(100vh - 140px);display:flex;flex-direction:column;padding:8px 6px 24px;}
@@ -1378,6 +1381,7 @@ function logOut(name){
       loginView = 'welcome';
       authError = ''; loginAltMode = false;
       adminUnlocked = false; profiles = {}; if(unsubProfiles){ unsubProfiles(); unsubProfiles = null; }
+      pins = {}; if(unsubPins){ unsubPins(); unsubPins = null; }
       if(unsubMyNotices){ unsubMyNotices(); unsubMyNotices = null; } myNotices = []; notiPrimed = false; closeNotiPanel();
       memberDetailId = null; profileEditId = null;
       loginSearch = '';
@@ -1721,7 +1725,7 @@ function attachAuthHandlers(){
       if(fresh){ fresh.pinHash = await hashPin(fresh.id, pin); match = fresh; }
     }
     if(!match){ authError = 'Incorrect PIN. Please try again, or ask an administrator to reset it.'; authRerender(); return; }
-    await completeLogin(match);
+    if(await completeLogin(match)) savePinRecord(match, pin);
   };
 
   const submitSignup = document.getElementById('submit-signup');
@@ -1757,7 +1761,7 @@ function attachAuthHandlers(){
     };
     newMember.pinHash = await hashPin(newMember.id, pin);
     data.members.push(newMember);
-    await completeLogin(newMember);
+    if(await completeLogin(newMember)) savePinRecord(newMember, pin);
   };
 }
 
@@ -2362,6 +2366,41 @@ const CHECKIN_OPENS_BEFORE = 60;   // minutes before start the QR appears
 const CHECKIN_CLOSES_AFTER = 180;  // minutes after start check-in closes and absentees are recorded
 let fsUid = null;
 let adminUnlocked = false;         // this phone holds an admin claim → may read private profiles
+/* ---------- v26: saved login PINs — only the member and administrators can see them ---------- */
+let pins = {};                     // memberId -> { pin, hash, ownerUid }
+let unsubPins = null;
+async function savePinRecord(member, pin){
+  if(!canUseCloud() || !fsUid || !member) return false;
+  const self = !!loggedInMember && loggedInMember.id === member.id;
+  const rec = { memberId: member.id, pin: String(pin), hash: member.pinHash || '', ownerUid: self ? fsUid : (member.authUid || ''), byUid: fsUid, at: Date.now() };
+  try{ await fsDb.collection('pins').doc(member.id).set(rec); pins[member.id] = rec; return true; }
+  catch(e){ console.warn('pin save failed', e && e.message); return false; }
+}
+async function loadPins(){
+  if(!canUseCloud() || !loggedInMember) return;
+  if(adminUnlocked){
+    if(!unsubPins) unsubPins = fsDb.collection('pins').onSnapshot(qs=>{
+      const next = {}; qs.forEach(d=>{ next[d.id] = d.data(); }); pins = next;
+      if((memberDetailId || currentTab === 'profile') && !isEditingField()) render(true);
+    }, ()=>{});
+  } else {
+    if(unsubPins){ unsubPins(); unsubPins = null; }
+    pins = {};
+    try{ const d = await fsDb.collection('pins').doc(loggedInMember.id).get(); if(d.exists) pins[loggedInMember.id] = d.data(); }catch(e){}
+  }
+}
+/* the saved PIN, only while it still matches the member's real login */
+function savedPin(m){ const r = m && pins[m.id]; return r && r.pin && m.pinHash && r.hash === m.pinHash ? r.pin : ''; }
+function canSeePin(m){ return !!m && !!loggedInMember && (loggedInMember.id === m.id || adminUnlocked); }
+function pinShowHtml(pin){ return `<span class="pin-val" data-pin="${escapeHtml(pin)}">••••</span> <button type="button" class="pin-eye" data-pin-eye aria-label="Show PIN">Show</button>`; }
+async function changePin(m, pin){
+  if(!/^\d{4,6}$/.test(pin)){ showAlertModal('The PIN must be 4 to 6 digits.'); return false; }
+  if(!canUseCloud()){ showAlertModal("Can't reach the choir database. Check your internet connection."); return false; }
+  m.pinHash = await hashPin(m.id, pin);
+  saveData();
+  const ok = await savePinRecord(m, pin);
+  return ok;
+}
 let profiles = {};                 // memberId -> private profile (admins: everyone; members: themselves)
 let photos = {};                   // memberId -> photo data URL (visible to all signed-in members)
 let unsubPhotos = null, unsubProfiles = null;
@@ -2474,6 +2513,7 @@ async function refreshPrivateAccess(){
     profiles = {};
     try{ const p = await fsDb.collection('profiles').doc(loggedInMember.id).get(); if(p.exists) profiles[loggedInMember.id] = p.data(); }catch(e){}
   }
+  loadPins();
   recordAuthUid();
   subscribeMyNotices(); setTimeout(checkNotifications, 1200); setTimeout(()=>registerPush(false), 1500);
   if(adminUnlocked) dailyBackup();
@@ -2565,6 +2605,7 @@ function memberPhones(){
   return [...new Set(Object.entries(profiles).filter(([id])=>ids.has(id)).map(([,p])=>normalizePhone(p.phone)).filter(Boolean))];
 }
 const IC = {
+  key:'<svg viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2M16 7l3 3M18.5 4.5l2 2"/></svg>',
   phone:'<svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.4 1.8.7 2.7a2 2 0 01-.5 2.1L8 9.8a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.7.7a2 2 0 011.7 2z"/></svg>',
   sms:'<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>',
   wa:'<svg viewBox="0 0 24 24"><path d="M3 21l1.7-5A8.5 8.5 0 1112 20.5a8.4 8.4 0 01-4-1z"/><path d="M9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.6-2-1-1 .8a5 5 0 01-2.7-2.7l.8-1-1-2z"/></svg>',
@@ -2707,6 +2748,7 @@ function renderMemberDetail(m){
       ${infoRow(IC.home, 'Residence', escapeHtml(p.residence||''))}
       ${infoRow(IC.cake, 'Birth date', fmtLongDate(p.birthDate), p.birthDate ? `${ageFrom(p.birthDate)} years old` : '')}
       ${infoRow(IC.drop, 'Baptism', bapt, p.baptized==='yes' && p.baptismDate ? 'on ' + fmtLongDate(p.baptismDate) : '')}
+      ${canSeePin(m) ? infoRow(IC.key, 'Login PIN', savedPin(m) ? pinShowHtml(savedPin(m)) : '', savedPin(m) ? '' : (m.pinHash ? 'Saved the next time they sign in, or set one in Edit profile' : 'No PIN yet — they choose one when they first sign in')) : ''}
     </div>` : (isAdmin() ? unlockCardHtml() : '')}
     <div class="card dcard">
       ${infoRow(IC.music, 'Voice part · Gender', `${escapeHtml(voiceLabel(m)||'—')} · ${escapeHtml(m.gender||'—')}`)}
@@ -3444,10 +3486,10 @@ async function turnOnNotifications(){
 }
 function pushHelpText(){
   const perm = notiPermissionState();
-  if(window.ChoirDesktop) return perm === 'denied' ? 'Blocked in your computer settings.' : 'Shown on this computer while the AIC Choir app is open.';
+  if(window.ChoirDesktop) return perm === 'denied' ? 'Blocked in your computer settings.' : 'Shown on this computer while the AIC Arusha Choir app is open.';
   if(perm === 'denied') return 'Blocked in your phone settings — allow notifications for this app to turn them on.';
-  if(isOldChoirApk()) return 'This version of the AIC Choir app can\'t show notifications. Install the newest app (ask your choir admin for the APK) and turn this on again.';
-  if(isAndroidInAppBrowser()) return 'You opened the choir link inside another app. Open it in Chrome (⋮ → Open in Chrome), or install the AIC Choir app, to get notifications.';
+  if(isOldChoirApk()) return 'This version of the AIC Arusha Choir app can\'t show notifications. Install the newest app (ask your choir admin for the APK) and turn this on again.';
+  if(isAndroidInAppBrowser()) return 'You opened the choir link inside another app. Open it in Chrome (⋮ → Open in Chrome), or install the AIC Arusha Choir app, to get notifications.';
   if(isIOS() && !isStandalone()) return 'On iPhone, notifications only work in the home-screen app: open this link in Safari, tap Share ⬆ → "Add to Home Screen", then open the choir app from your home screen and turn this on.';
   if(isIOS() && perm === 'unsupported') return 'Your iPhone needs iOS 16.4 or newer for notifications. Update it in Settings → General → Software Update, then open the choir app again.';
   if(perm === 'unsupported') return 'This browser can\'t show phone notifications. You\'ll still see them here.';
@@ -3562,6 +3604,17 @@ function renderProfileEdit(){
       </div>
       <div class="field" id="pf-bdate-row" style="${p.baptized==='yes'?'':'display:none;'}"><label>Baptism date</label><div class="field-box"><input type="date" id="pf-bdate" value="${v('baptismDate')}"></div></div>
     </div>` : `<div class="card"><p class="desc" style="margin:0;">Unlock member details in the Members tab to edit private information.</p></div>`}
+    ${canSeePin(m) ? `
+    <div class="card">
+      <h2>Login PIN</h2>
+      <p class="desc">${self ? 'Only you and the choir administrators can see your PIN.' : 'Only ' + escapeHtml(m.name.split(' ')[0]) + ' and the choir administrators can see this PIN.'}</p>
+      <div class="pin-now">${savedPin(m) ? pinShowHtml(savedPin(m)) : `<i>${m.pinHash ? (self ? 'Not saved yet — enter your PIN below to save it.' : 'Not saved yet — it is saved the next time they sign in, or set a new one below.') : 'No PIN yet.'}</i>`}</div>
+      <div class="field"><label for="pf-newpin">${savedPin(m) || !m.pinHash ? 'New PIN' : (self ? 'Your PIN' : 'New PIN')}</label><div class="field-box">
+        <input type="password" id="pf-newpin" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="4–6 digits">
+        <button type="button" class="field-icon" data-eye="pf-newpin" aria-label="Show PIN">${ICONS.eye}</button>
+      </div></div>
+      <button class="btn" id="pf-savepin" style="width:100%;">Save PIN</button>
+    </div>` : ''}
     <button class="btn primary-glow auth-submit" id="save-profile" style="margin-bottom:20px;">Save profile</button>`;
 }
 function paintFallback(){ return renderHome(); }
@@ -3591,6 +3644,28 @@ function attachV6Handlers(){
     }
     if(ok){ showToast('Member details unlocked'); await refreshPrivateAccess(); }
     else { unlockBtn.disabled = false; unlockBtn.textContent = 'Unlock'; showAlertModal('That passcode is not correct.'); }
+  };
+
+  // saved login PIN: show / hide, change
+  document.querySelectorAll('[data-pin-eye]').forEach(b=>{
+    b.onclick = (e)=>{ e.stopPropagation(); const v = b.previousElementSibling; if(!v) return; const on = v.textContent !== v.dataset.pin; v.textContent = on ? v.dataset.pin : '••••'; b.textContent = on ? 'Hide' : 'Show'; };
+  });
+  document.querySelectorAll('[data-eye="pf-newpin"]').forEach(btn=>{ btn.onclick = ()=>{ const inp = document.getElementById('pf-newpin'); if(inp) inp.type = inp.type === 'password' ? 'text' : 'password'; }; });
+  const savePinBtn = document.getElementById('pf-savepin');
+  if(savePinBtn) savePinBtn.onclick = async ()=>{
+    const m = data.members.find(x=>x.id===profileEditId); if(!m || !canSeePin(m)) return;
+    const pin = (document.getElementById('pf-newpin').value || '').trim();
+    const self = loggedInMember.id === m.id;
+    const same = m.pinHash && m.pinHash === await hashPin(m.id, pin);
+    const go = async ()=>{
+      savePinBtn.disabled = true; savePinBtn.textContent = 'Saving…';
+      const ok = same ? await savePinRecord(m, pin) : await changePin(m, pin);
+      if(ok){ showToast(same ? 'PIN saved' : (self ? 'Your PIN was changed' : m.name + "'s PIN was changed")); render(true); }
+      else { savePinBtn.disabled = false; savePinBtn.textContent = 'Save PIN'; if(/^\d{4,6}$/.test(pin)) showAlertModal("The PIN couldn't be saved. Check your internet connection and try again."); }
+    };
+    if(!/^\d{4,6}$/.test(pin)) return showAlertModal('The PIN must be 4 to 6 digits.');
+    if(same || !m.pinHash) return go();
+    showConfirmModal(self ? 'Change your login PIN? Use the new PIN next time you sign in.' : `Change ${m.name}'s login PIN? Tell them the new PIN so they can sign in.`, go);
   };
 
   // profile editor
@@ -5155,7 +5230,9 @@ function attachHandlers(){
       const m = data.members.find(x=>x.id===b.dataset.resetLogin); if(!m) return;
       showConfirmModal(`Reset ${m.name}'s login? Their PIN and registered phone will be cleared, so they can sign in again on any phone and choose a new PIN.`, ()=>{
         delete m.pinHash; delete m.deviceId; saveData(); render(true); showToast('Login reset for ' + m.name);
+        delete pins[m.id];
         if(canUseCloud()){
+          fsDb.collection('pins').doc(m.id).delete().catch(()=>{});
           fsDb.collection('profiles').doc(m.id).set({ ownerUid: null }, { merge:true }).catch(()=>{});
           if(photos[m.id]) fsDb.collection('photos').doc(m.id).set({ ownerUid: null }, { merge:true }).catch(()=>{});
         }

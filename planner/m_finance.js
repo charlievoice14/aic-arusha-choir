@@ -83,11 +83,82 @@
   const methodPill = (m) => `<span class="pill ${bucket(m) === 'Cash' ? 'ok' : 'info'}">${bucket(m)}${m && m !== bucket(m) ? ' · ' + esc(m) : ''}</span>`;
   const statusPill = (s) => `<span class="pill ${({ Paid: 'ok', Active: 'ok', Partial: 'warn', Pending: 'warn', Overpaid: 'info', Unpaid: 'bad' })[s] || ''}">${esc(s)}</span>`;
   const methodField = { k: 'method', label: 'Payment type (Cash / Bank / mobile money)', type: 'select', options: F.METHODS, blank: false };
-  const guard = () => { if (!F.canEdit()) throw new Error('Only the Finance & Fundraising team can record finance entries.'); };
+  const guard = () => { if (F.locked()) throw new Error('Unlock the AAC Finance Manager with the finance password first.'); if (!F.canEdit()) throw new Error('Only the Finance & Fundraising team can record finance entries.'); };
+
+
+  // ---------- password lock: set by an administrator or the treasurer, entered once on each device ----------
+  const LK = F.lock = { on: false, open: true, loaded: false, busy: false };
+  const CL = () => window.ChoirLink;
+  F.canManagePw = () => !!CL() && (CL().isAdmin || CL().isTreasurer);
+  F.locked = () => !!CL() && LK.on && !LK.open;
+  /** can this device read finance data right now? (the database decides) */
+  async function probe() {
+    if (!LK.on) return true;
+    try { await CL().fs.collection('pl_fin_settings').limit(1).get(); return true; } catch (e) { return !(e && e.code === 'permission-denied'); }
+  }
+  async function refreshLock(draw = true) {
+    const was = LK.open, first = !LK.loaded;
+    LK.open = await probe(); LK.loaded = true;
+    if (LK.open && (!was || St.FIN.some(c => St.denied[c]))) St.resub(St.FIN);
+    if (draw && St.db && (first || was !== LK.open)) A.render && A.render();
+  }
+  if (window.ChoirReady) window.ChoirReady.then(c => {
+    const L0 = CL(); if (!c || !L0) return;
+    L0.fs.collection('finLock').doc('status').onSnapshot(d => { LK.on = !!(d.exists && (d.data() || {}).on); refreshLock(); }, () => { LK.loaded = true; });
+  });
+  const pwErr = (pw, pw2) => !pw || pw.length < 4 ? 'The password must have at least 4 characters.' : pw.length > 64 ? 'The password is too long.' : pw !== pw2 ? 'The two passwords are not the same.' : '';
+  async function claim(pw) { const L0 = CL(); await L0.fs.collection('finClaims').doc(L0.uid).set({ password: pw, memberId: L0.me.id, at: Date.now() }); }
+  async function setStatus(on) { const L0 = CL(); await L0.fs.collection('finLock').doc('status').set({ on, by: L0.me.name, at: Date.now() }); }
+  /** create, change or (admin) reset the password */
+  async function setPassword(pw) {
+    const L0 = CL();
+    await L0.fs.collection('secrets').doc('finance').set({ password: pw, by: L0.me.name, at: Date.now() });
+    await claim(pw); await setStatus(true);
+    LK.on = true; await refreshLock(false);
+  }
+  async function removePassword() {
+    const L0 = CL();
+    await L0.fs.collection('secrets').doc('finance').delete();
+    await setStatus(false); LK.on = false; await refreshLock(false);
+  }
+  function pwForm(title, intro, onSave) {
+    UI.modal({ title, body: `<p class="small muted" style="margin-top:0">${intro}</p><label class="f full"><span>New password</span><input type="password" id="fpw1" autocomplete="new-password" maxlength="64"></label><label class="f full" style="margin-top:10px"><span>Type it again</span><input type="password" id="fpw2" autocomplete="new-password" maxlength="64"></label><label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="fpwShow"> Show password</label>`,
+      buttons: [{ label: 'Cancel' }, { label: 'Save password', cls: 'pri', onClick: async ({ body }) => {
+        const a = body.querySelector('#fpw1').value, b = body.querySelector('#fpw2').value, e = pwErr(a, b);
+        if (e) { UI.toast(e, true); return false; }
+        await onSave(a); } }] }).body.querySelector('#fpwShow').onchange = (e) => document.querySelectorAll('#fpw1,#fpw2').forEach(i => i.type = e.target.checked ? 'text' : 'password');
+  }
+  function lockScreen(el) {
+    const mgr = F.canManagePw(), admin = CL() && CL().isAdmin;
+    el.innerHTML = `<div class="card fin-lock"><div class="fin-lock-ic">🔒</div><h3>AAC Finance Manager is locked</h3><p class="small muted">Enter the finance password to open it on this device. ${mgr ? '' : 'Ask the treasurer or an administrator for the password.'}</p>
+      <form id="flForm" class="fin-lock-row" autocomplete="off"><input type="password" id="flPw" placeholder="Finance password" maxlength="64" aria-label="Finance password"><button class="btn pri" id="flGo">Unlock</button></form>
+      ${admin ? '<button class="btn ghost sm" id="flReset" style="margin-top:12px">Forgot the password? Set a new one</button>' : (mgr ? '<p class="small muted" style="margin-top:12px">Forgot it? An administrator can set a new password.</p>' : '')}</div>`;
+    el.querySelector('#flForm').onsubmit = async (e) => {
+      e.preventDefault(); const pw = el.querySelector('#flPw').value; if (!pw) return;
+      const b = el.querySelector('#flGo'); b.disabled = true; b.textContent = 'Checking…';
+      try { await claim(pw); await refreshLock(false); if (F.locked()) throw new Error('x'); UI.toast('Finance Manager unlocked'); A.render(); }
+      catch (x) { b.disabled = false; b.textContent = 'Unlock'; UI.toast('That password is not correct.', true); el.querySelector('#flPw').select(); }
+    };
+    const r = el.querySelector('#flReset'); if (r) r.onclick = () => pwForm('Set a new finance password', 'The old password stops working on every device. Share the new one with the finance team.', async (pw) => { await setPassword(pw); UI.toast('New finance password saved'); A.render(); });
+    setTimeout(() => { const i = el.querySelector('#flPw'); if (i) i.focus(); }, 50);
+  }
+  function pwCard() {
+    if (!F.canManagePw()) return LK.on ? '<div class="card"><h3>Finance password</h3><p class="small muted">The Finance Manager is protected with a password. Only the treasurer and administrators can change it.</p></div>' : '';
+    return `<div class="card"><h3>Finance password</h3>${LK.on
+      ? '<p class="small muted">On. Everyone, including leaders, must enter the password once on each device before they can see finance records.</p><div class="row"><button class="btn" id="fpChange">Change password</button><button class="btn danger" id="fpOff">Remove password</button></div>'
+      : '<p class="small muted">Off. Every leader with finance access can open the Finance Manager. Set a password so only people who know it can see the records.</p><button class="btn pri" id="fpOn">Set a password</button>'}</div>`;
+  }
+  function bindPwCard(el) {
+    const on = el.querySelector('#fpOn'); if (on) on.onclick = () => pwForm('Set a finance password', 'Everyone will need this password once on each device to open the AAC Finance Manager.', async (pw) => { await setPassword(pw); UI.toast('Finance password set'); A.render(); });
+    const ch = el.querySelector('#fpChange'); if (ch) ch.onclick = () => pwForm('Change the finance password', 'The old password stops working on every device. Share the new one with the finance team.', async (pw) => { await setPassword(pw); UI.toast('Finance password changed'); A.render(); });
+    const off = el.querySelector('#fpOff'); if (off) off.onclick = async () => { if (!(await UI.confirm('Remove the finance password? Every leader with finance access will be able to open the Finance Manager without it.', { ok: 'Remove', danger: true }))) return; try { await removePassword(); UI.toast('Finance password removed'); A.render(); } catch (x) { UI.fail(x); } };
+  }
 
   // ---------- module shell ----------
   const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
   F.render = (el) => {
+    if (CL() && !LK.loaded) { el.innerHTML = '<div class="empty">Checking access…</div>'; return; }
+    if (F.locked()) return lockScreen(el);
     if (!F.canView()) return myStatement(el);
     const s = A.state.fin = A.state.fin || { tab: 'dash', mf: 'all', q: '', month: CUR() };
     el.innerHTML = `<div class="row between" style="margin-bottom:10px"><div class="small muted">${F.canEdit() ? 'You can record finance entries.' : 'View only: the Finance & Fundraising team records entries.'} All amounts in ${esc(St.cfg().currency || 'TZS')}.</div></div>
@@ -460,14 +531,15 @@
   // ---------- settings, balances, import ----------
   function settings(el) {
     const can = F.canEdit(); const o = openings(); const s = F.set();
-    el.innerHTML = `<div class="grid g2"><div class="card"><h3>Fee settings</h3>${UI.form([{ k: 'monthlyFee', label: 'Standard monthly fee', type: 'number', min: 0 }, { k: 'threshold', label: 'Months fully paid before a member is Active', type: 'number', min: 1 }, { k: 'feesFrom', label: 'Count unpaid fees from (YYYY-MM)', hint: 'Members who joined earlier are only charged from the current month.' }], s)}<button class="btn pri" id="fsSave" style="margin-top:10px" ${can ? '' : 'disabled'}>Save fee settings</button></div>
+    el.innerHTML = `<div class="grid g2">${pwCard()}<div class="card"><h3>Fee settings</h3>${UI.form([{ k: 'monthlyFee', label: 'Standard monthly fee', type: 'number', min: 0 }, { k: 'threshold', label: 'Months fully paid before a member is Active', type: 'number', min: 1 }, { k: 'feesFrom', label: 'Count unpaid fees from (YYYY-MM)', hint: 'Members who joined earlier are only charged from the current month.' }], s)}<button class="btn pri" id="fsSave" style="margin-top:10px" ${can ? '' : 'disabled'}>Save fee settings</button></div>
       <div class="card"><h3>Cash in hand & bank balance</h3><p class="small muted">Money you already have. Added to cash and bank totals, not counted as income.</p><div class="row" style="margin-bottom:8px"><span class="pill ok">Cash ${fmt(o.cash)}</span><span class="pill info">Bank ${fmt(o.bank)}</span>${can ? '<button class="btn sm pri" id="obNew">Record balance</button>' : ''}</div>
         ${UI.table([{ label: 'As of', f: x => U.fmtD(x.date) }, { label: 'Type', f: x => methodPill(x.type) }, { label: 'Note', f: x => esc(x.note || '—') }, { label: 'Amount', n: 1, f: x => fmt(x.amount) }, { label: '', f: x => bin('fin_openings|' + x.id, `${x.type} balance · ${fmt(x.amount)}`) }], OP().sort(U.by('date', -1)), { click: can ? 1 : 0, empty: 'No balances recorded.' })}</div>
       <div class="card"><h3>Bring in data from the old Choir Finance Manager</h3><p class="small muted">In the old app go to Settings → Download backup file (or Show backup as text). Then choose the file or paste the text here. Members are matched to planner members by member ID or name, and new ones are created. Importing the same backup twice does not duplicate anything.</p>
         <div class="row"><label class="btn ${can ? '' : 'disabled'}" for="bkFile">Choose backup file</label><input type="file" id="bkFile" accept=".json,application/json" hidden ${can ? '' : 'disabled'}><button class="btn" id="bkPaste" ${can ? '' : 'disabled'}>Paste backup text</button></div><div id="bkMsg" class="small" style="margin-top:8px">${esc((A.state.fin || {}).bkMsg || '')}</div></div>
       <div class="card"><h3>Excel import & backup</h3><p class="small muted">Use the same Excel template as the old app (Members, Contributions, Fee Payments, Contribution Payments, Income, Expenses, Cash & Bank Balances).</p>
         <div class="row"><button class="btn" id="xTpl">Download Excel template</button><label class="btn" for="xFile">Import Excel file</label><input type="file" id="xFile" accept=".xlsx,.xls" hidden ${can ? '' : 'disabled'}><button class="btn" id="bkOut">Download backup (JSON)</button></div></div></div>`;
-    const sv = el.querySelector('#fsSave'); sv.onclick = async () => { const { vals } = UI.read(el.querySelector('.card'), [{ k: 'monthlyFee', type: 'number' }, { k: 'threshold', type: 'number' }, { k: 'feesFrom' }]); if (vals.feesFrom && !/^\d{4}-\d{2}$/.test(vals.feesFrom)) return UI.toast('Use YYYY-MM for "Count unpaid fees from".', true); try { guard(); await St.put('fin_settings', Object.assign({}, St.get('fin_settings', 'main') || {}, vals, { id: 'main' }), { summary: 'Finance settings' }); UI.toast('Saved'); } catch (e) { UI.fail(e); } };
+    const sv = el.querySelector('#fsSave'); sv.onclick = async () => { const { vals } = UI.read(el.querySelector('#fsSave').closest('.card'), [{ k: 'monthlyFee', type: 'number' }, { k: 'threshold', type: 'number' }, { k: 'feesFrom' }]); if (vals.feesFrom && !/^\d{4}-\d{2}$/.test(vals.feesFrom)) return UI.toast('Use YYYY-MM for "Count unpaid fees from".', true); try { guard(); await St.put('fin_settings', Object.assign({}, St.get('fin_settings', 'main') || {}, vals, { id: 'main' }), { summary: 'Finance settings' }); UI.toast('Saved'); } catch (e) { UI.fail(e); } };
+    bindPwCard(el);
     const ob = el.querySelector('#obNew'); if (ob) ob.onclick = () => balForm();
     UI.bindRows(el, id => balForm(St.get('fin_openings', id)));
     el.querySelector('#bkFile').onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { e.target.value = ''; importBackup(String(r.result), el.querySelector('#bkMsg')); }; r.readAsText(f); };

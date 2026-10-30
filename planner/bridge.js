@@ -108,6 +108,8 @@
     window.ChoirLink = {
       uid, me, isAdmin, members, fs,
       defaultRole: isAdmin ? 'admin' : roleForPosition(me.position),
+      /* the choir treasurer may set the AAC Finance password (with the administrators) */
+      isTreasurer: /^treasurer$/i.test(String(me.position || '').trim()),
       roleForPosition,
       /* every leadership title used in the choir app (standard list + any used by members) */
       titles: [...new Set(POSITIONS.concat(members.map(m => m && m.position).filter(p => p && p !== 'Choir Member')))],

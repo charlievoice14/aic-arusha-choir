@@ -175,6 +175,7 @@
         break;
       }
       case 'finance': {
+        if (A.Fin.locked()) throw new Error('Unlock the AAC Finance Manager with the finance password first.');
         if (!A.Fin.canView()) throw new Error('Finance reports are only available to the Finance & Fundraising team and the choir leadership.');
         const F = A.Fin, sm = F.summary(), t = sm.totals, fmt = F.fmt;
         M.title = 'Finance report'; M.subtitle = 'As of ' + U.fmtD(U.today()); M.landscape = o.orient === 'landscape';

@@ -88,23 +88,34 @@ window.App = window.App || {};
   const COLLS = ['cfg', 'roles', 'departments', 'members', 'years', 'objectives', 'activities', 'events', 'finance', 'tasks', 'travel', 'songs', 'collections', 'plans', 'series', 'sessions', 'assignments', 'readiness', 'attendance', 'notifications', 'approvals', 'audit', 'exports', 'templates', 'slots', 'deptnotes', 'deptbudget', 'fin_payments', 'fin_contribs', 'fin_cpay', 'fin_income', 'fin_expenses', 'fin_openings', 'fin_settings'];
   const LIMITED = { audit: 400, exports: 150, notifications: 300 };
   const Store = A.Store = {
-    db: null, mode: 'loading', S: {}, ready: {}, error: null, onChange: null,
+    db: null, mode: 'loading', S: {}, ready: {}, error: null, onChange: null, denied: {}, unsub: {},
     writeChains: {},
     async init(db) {
       this.db = db || MemoryDB();
       this.mode = db ? 'db' : 'local';
       COLLS.forEach(c => { this.S[c] = new Map(); this.ready[c] = false; });
       const ch = U.debounce(() => this.onChange && this.onChange(), 50);
-      COLLS.forEach(c => {
-        let q = this.db.collection(c);
-        if (LIMITED[c] && db) q = q.orderBy('at', 'desc').limit(LIMITED[c]);
-        q.onSnapshot(snap => {
-          const m = new Map();
-          snap.docs.forEach(d => { const v = d.data(); if (v) m.set(d.id, Object.assign({}, v, { id: d.id })); });
-          this.S[c] = m; this.ready[c] = true; A.L && A.L.invalidate(); ch();
-        }, err => { this.error = err; console.warn('subscription error', c, err); ch(); });
+      this._ch = ch;
+      COLLS.forEach(c => this.sub(c));
+    },
+    /** listen to one collection; a locked one (AAC Finance password) just stays empty until it is unlocked */
+    sub(c) {
+      if (this.unsub[c]) { try { this.unsub[c](); } catch (e) { } }
+      let q = this.db.collection(c);
+      if (LIMITED[c] && this.mode === 'db') q = q.orderBy('at', 'desc').limit(LIMITED[c]);
+      this.denied[c] = false;
+      this.unsub[c] = q.onSnapshot(snap => {
+        const m = new Map();
+        snap.docs.forEach(d => { const v = d.data(); if (v) m.set(d.id, Object.assign({}, v, { id: d.id })); });
+        this.S[c] = m; this.ready[c] = true; this.denied[c] = false; A.L && A.L.invalidate(); this._ch();
+      }, err => {
+        if (err && err.code === 'permission-denied' && /^fin_/.test(c)) { this.S[c] = new Map(); this.ready[c] = true; this.denied[c] = true; A.L && A.L.invalidate(); this._ch(); return; }
+        this.error = err; console.warn('subscription error', c, err); this._ch();
       });
     },
+    /** listen again (after the finance password is entered) */
+    resub(list) { if (!this.db) return; (list || COLLS).forEach(c => this.sub(c)); },
+    FIN: COLLS.filter(c => /^fin_/.test(c)),
     allReady() { return COLLS.every(c => this.ready[c]); },
     get(c, id) { return id ? this.S[c].get(id) : undefined; },
     all(c) { return [...(this.S[c] || new Map()).values()]; },

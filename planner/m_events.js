@@ -158,7 +158,7 @@
         <dt>Equipment</dt><dd>${(e.equipment || []).map(esc).join(', ') || '—'}</dd><dt>Technical</dt><dd>${esc(e.tech || '—')}</dd>
         <dt>Transport</dt><dd>${esc(e.transport || '—')}</dd><dt>Accommodation</dt><dd>${esc(e.accommodation || '—')}</dd>
         ${showFin ? `<dt>Budget</dt><dd>${U.money(fin.budget, St.cfg().currency)}</dd><dt>Actual expenses</dt><dd>${fin.actual == null ? '<span class="muted">not recorded</span>' : U.money(fin.actual, St.cfg().currency)}</dd>` : ''}
-        ${A.Fin && A.Fin.canView() ? (() => { const fm = A.Fin.eventMoney(e.id); return `<dt>Finance Manager</dt><dd>${fm.income || fm.expense ? `Income ${A.Fin.fmt(fm.income)} · Expenses ${A.Fin.fmt(fm.expense)}` : '<span class="muted">nothing linked to this event yet</span>'}</dd>`; })() : ''}
+        ${A.Fin && A.Fin.canView() && !A.Fin.locked() ? (() => { const fm = A.Fin.eventMoney(e.id); return `<dt>Finance Manager</dt><dd>${fm.income || fm.expense ? `Income ${A.Fin.fmt(fm.income)} · Expenses ${A.Fin.fmt(fm.expense)}` : '<span class="muted">nothing linked to this event yet</span>'}</dd>`; })() : ''}
         <dt>Attachments</dt><dd>${(e.attachments || []).map(a => `<a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.name || a.url)}</a>`).join('<br>') || '—'}</dd>
         <dt>Notes</dt><dd>${esc(e.notes || '—')}</dd></dl>
       <div><h3>Preparation</h3>${plan ? `<p><b>${esc(plan.name)}</b>: ${m.sessions} sessions, ${U.hrs(m.plannedMin)} planned, ${m.ready}/${m.unique} songs ready.</p><button class="btn sm" id="vPlan">Open practice plan</button>` : `<p class="muted">No practice plan linked.</p>${A.Auth.can('practice') ? '<button class="btn sm" id="vNewPlan">Create practice plan</button>' : ''}`}

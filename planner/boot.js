@@ -77,6 +77,7 @@
     const me = A.Auth.me;
     UI.$('#who').innerHTML = `<button class="btn sm ghost themebtn" id="themeBtn" aria-label="Switch light or dark">${document.documentElement.classList.contains('light') ? '☾ Dark' : '☀ Light'}</button>${me && me.avatarUrl ? `<img src="${esc(me.avatarUrl)}" alt="">` : ''}<span>${esc((me && me.name) || (St.mode === 'local' ? 'Preview' : 'You'))} · ${esc(A.Auth.roleName())}</span>`;
     UI.$('#themeBtn').onclick = () => { const l = document.documentElement.classList.toggle('light'); try { localStorage.setItem('aac_theme', l ? 'light' : 'dark'); } catch (e) { } A.render(); };
+    pending = false;   // a full render already shows the latest data
     const view = UI.$('#view');
     const keepScroll = window.scrollY;
     const inner = {}; view.querySelectorAll('[id]').forEach(e => { if (e.scrollTop > 0) inner[e.id] = e.scrollTop; });   // scrolled lists keep their place
@@ -90,7 +91,7 @@
   A.rerender = () => {
     const ae = document.activeElement;
     if (ae && UI.$('#view').contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName) && ae.type !== 'checkbox') {
-      if (!pending) { pending = true; ae.addEventListener('blur', () => { pending = false; A._keepScroll = true; A.render(); }, { once: true }); }
+      if (!pending) { pending = true; ae.addEventListener('blur', () => setTimeout(() => { if (!pending) return; pending = false; A._keepScroll = true; A.render(); }, 0), { once: true }); }
       return;
     }
     A._keepScroll = true; A.render();
