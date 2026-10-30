@@ -547,6 +547,31 @@ html,body{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjus
   .tw.resp table.num-first td:nth-child(2){font-size:.95rem;font-weight:700;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:2px;justify-content:flex-start;text-align:left}
   .tw.resp table.num-first td:nth-child(2)::before{display:none}
 }
+
+/* calendar toolbar + never let a page get wider than the phone screen */
+html{overflow-x:hidden}
+@supports (overflow-x:clip){html{overflow-x:clip}.main{overflow-x:clip}}
+.main,#mod{max-width:100%}
+.filters label > input,.filters label > select{min-width:0;max-width:100%;width:100%}
+.cal-step{display:inline-flex;align-items:center;gap:8px}
+.cal-step b{min-width:150px;text-align:center}
+@media (max-width:640px){
+  .cal-f{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cal-f label,.cal-f label.grow{min-width:0;flex:none}
+  .cal-f label:first-child{grid-column:1/-1}
+  .cal-bar{flex-direction:column;align-items:stretch;gap:10px}
+  .cal-vt{width:100%;display:grid;grid-template-columns:repeat(6,1fr);gap:2px;overflow:visible}
+  .cal-vt button{padding:7px 2px;font-size:.76rem;min-width:0;text-align:center}
+  .cal-nav{width:100%;display:grid;grid-template-columns:1fr auto auto;gap:8px}
+  .cal-step{display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;grid-column:1/-1;min-width:0}
+  .cal-step b{min-width:0;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal-nav > .btn{justify-self:stretch}
+  .cal-nav > #cNew{grid-column:1/2}
+  .cal-lg{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+  .cal-lg span,.cal-lg label{min-width:0}
+}
+@media (max-width:640px){ .wk{grid-template-columns:1fr;min-width:0} .wk .col{min-height:0} }
+@media (max-width:360px){ .cal-vt{grid-template-columns:repeat(3,1fr)} .cal-lg{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
