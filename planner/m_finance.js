@@ -30,7 +30,74 @@
   const monthRange = (a, b) => { const r = []; let m = a; let g = 0; while (m <= b && g < 240) { r.push(m); m = nextM(m); g++; } return r; };
   const last6 = (end) => { const r = []; let [y, m] = end.split('-').map(Number); for (let i = 5; i >= 0; i--) { let yy = y, mm = m - i; while (mm <= 0) { mm += 12; yy--; } r.push(yy + '-' + U.pad(mm)); } return r; };
   const bucket = (method) => method === 'Cash' ? 'Cash' : 'Bank';
-  const P = () => St.all('fin_payments'), CO = () => St.all('fin_contribs'), CP = () => St.all('fin_cpay'), INC = () => St.all('fin_income'), EXP = () => St.all('fin_expenses'), OP = () => St.all('fin_openings');
+  const TR = () => St.all('fin_transfers'), P = () => St.all('fin_payments'), CO = () => St.all('fin_contribs'), CP = () => St.all('fin_cpay'), INC = () => St.all('fin_income'), EXP = () => St.all('fin_expenses'), OP = () => St.all('fin_openings');
+
+  // ---------- accounts (Cash, Bank, Mobile money) and their sections (sub-accounts) ----------
+  F.ACCTS = [['Cash', 'Cash in hand'], ['Bank', 'Bank'], ['Mobile', 'Mobile money']];
+  const MOBILE = ['M-Pesa', 'Airtel Money', 'Tigo Pesa', 'HaloPesa', 'Mixx by Yas', 'Mobile'];
+  const acctOf = F.acctOf = (method) => method === 'Cash' ? 'Cash' : MOBILE.includes(method) ? 'Mobile' : 'Bank';
+  const acctOfOpening = (t) => t === 'Cash' ? 'Cash' : t === 'Mobile' ? 'Mobile' : 'Bank';
+  const acctName = F.acctName = (a) => (F.ACCTS.find(x => x[0] === a) || [a, a])[1];
+  const BUILTIN = ['Fees', 'Contributions', 'General'];
+  const userSecs = (a) => ((((St.get('fin_settings', 'main') || {}).sections) || {})[a]) || [];
+  const secMatch = (list, name) => list.find(x => x.toLowerCase() === String(name || '').trim().toLowerCase());
+  F.sections = (a) => U.uniq(BUILTIN.concat(userSecs(a)));
+  /** which section of the account a record's money sits in (records saved before sections existed get a sensible default) */
+  const fundOf = (kind, r, a) => {
+    if (r.fund) return r.fund;
+    const list = F.sections(a);
+    if (kind === 'fee') return 'Fees';
+    if (kind === 'cpay') { const c = St.get('fin_contribs', r.contribId); return (c && secMatch(list, c.name)) || 'Contributions'; }
+    if (kind === 'inc') return secMatch(list, r.category) || 'General';
+    return 'General';
+  };
+  /** every movement of money, as entries on an account section: + money in (debit), − money out (credit) */
+  F.entries = () => {
+    const E = [];
+    OP().forEach(o => { const a = acctOfOpening(o.type); E.push({ date: o.date, acct: a, fund: fundOf('open', o, a), amt: +o.amount || 0, kind: 'Balance', cat: 'Balance recorded', desc: o.note || 'Balance brought forward', coll: 'fin_openings', id: o.id }); });
+    INC().forEach(i => { const a = acctOf(i.method); E.push({ date: i.date, acct: a, fund: fundOf('inc', i, a), amt: +i.amount || 0, kind: 'Income', cat: i.category, desc: i.description || i.category, method: i.method, coll: 'fin_income', id: i.id }); });
+    P().forEach(p => { const a = acctOf(p.method); E.push({ date: p.date, acct: a, fund: fundOf('fee', p, a), amt: +p.amount || 0, kind: 'Income', cat: 'Membership Fee', desc: mName(p.memberId) + ' — fee ' + mLabel(p.month), mid: p.memberId, descRest: ' — fee ' + mLabel(p.month), method: p.method, coll: 'fin_payments', id: p.id }); });
+    CP().forEach(p => { const a = acctOf(p.method), cn = (St.get('fin_contribs', p.contribId) || {}).name || 'Contribution'; E.push({ date: p.date, acct: a, fund: fundOf('cpay', p, a), amt: +p.amount || 0, kind: 'Income', cat: 'Contribution', desc: mName(p.memberId) + ' — ' + cn, mid: p.memberId, descRest: ' — ' + cn, method: p.method, coll: 'fin_cpay', id: p.id }); });
+    EXP().forEach(e => { const a = acctOf(e.method); E.push({ date: e.date, acct: a, fund: fundOf('exp', e, a), amt: -(+e.amount || 0), kind: 'Expense', cat: e.category, desc: (e.description || e.category) + (e.paidTo ? ' · paid to ' + e.paidTo : ''), method: e.method, coll: 'fin_expenses', id: e.id }); });
+    TR().forEach(t => {
+      const d = `${acctName(t.fromAcct)} › ${t.fromFund} → ${acctName(t.toAcct)} › ${t.toFund}${t.note ? ' — ' + t.note : ''}`;
+      E.push({ date: t.date, acct: t.fromAcct, fund: t.fromFund, amt: -(+t.amount || 0), kind: 'Transfer', cat: 'Transfer out', desc: d, coll: 'fin_transfers', id: t.id });
+      E.push({ date: t.date, acct: t.toAcct, fund: t.toFund, amt: +t.amount || 0, kind: 'Transfer', cat: 'Transfer in', desc: d, coll: 'fin_transfers', id: t.id });
+    });
+    return E.sort((x, y) => (x.date || '').localeCompare(y.date || '') || (y.amt - x.amt));
+  };
+  /** balance of every account and of every section inside it */
+  F.balances = () => {
+    const b = {}; F.ACCTS.forEach(([a]) => { b[a] = { total: 0, funds: {} }; F.sections(a).forEach(x => b[a].funds[x] = 0); });
+    F.entries().forEach(e => { const x = b[e.acct] || (b[e.acct] = { total: 0, funds: {} }); x.total += e.amt; x.funds[e.fund] = (x.funds[e.fund] || 0) + e.amt; });
+    return b;
+  };
+  F.available = (a, f, coll, id) => F.entries().filter(e => e.acct === a && e.fund === f && !(coll && e.coll === coll && e.id === id)).reduce((t, e) => t + e.amt, 0);
+  const where = (a, f) => `${esc(acctName(a))} › ${esc(f)}`;
+  /** fill a section <select> for an account, showing what each section holds */
+  const fundOpts = (sel, a, want) => {
+    const b = F.balances()[a] || { funds: {} }; const list = U.uniq(F.sections(a).concat(Object.keys(b.funds)));
+    const v = list.includes(want) ? want : list.includes(sel.value) ? sel.value : 'General';
+    sel.innerHTML = list.map(x => `<option value="${esc(x)}" ${x === v ? 'selected' : ''}>${esc(x)} · ${fmt(b.funds[x] || 0)}</option>`).join('');
+  };
+  /** link an account (payment type) select to its section select, with a live "available" note */
+  function bindFund(body, o) {
+    const ms = body.querySelector(o.acct), fs = body.querySelector(o.fund); if (!ms || !fs) return;
+    const toA = o.toAcct || acctOf; const am = body.querySelector(o.amount || '#f_amount');
+    let touched = !!o.want;
+    const hint = document.createElement('div'); hint.className = 'hint'; (fs.closest('label') || fs.parentNode).appendChild(hint);
+    const upd = () => { const a = toA(ms.value), av = F.available(a, fs.value, o.coll, o.id); hint.innerHTML = `${where(a, fs.value)} ${o.out ? 'has' : 'now holds'} <b>${fmt(av)}</b>` + (o.out && am && +am.value > av ? ` — <b style="color:var(--bad)">not enough money in this section</b>` : ''); };
+    const draw = () => { const a = toA(ms.value); fundOpts(fs, a, touched ? fs.value : (o.guess ? o.guess(a) : fs.value)); upd(); };
+    ms.addEventListener('change', draw); fs.addEventListener('change', () => { touched = true; upd(); }); if (am) am.addEventListener('input', upd);
+    (o.watch || []).forEach(q => { const w = body.querySelector(q); if (w) w.addEventListener('change', () => { if (!touched) draw(); }); });
+    const a0 = toA(ms.value); fundOpts(fs, a0, o.want || (o.guess ? o.guess(a0) : 'General')); upd();
+  }
+  const fundField = (label) => ({ k: 'fund', label: label || 'Section of the account', type: 'select', options: [], blank: false });
+  /** ask before taking a section below zero */
+  async function overdraftOk(a, f, amount, coll, id) {
+    const av = F.available(a, f, coll, id); if (+amount <= av) return true;
+    return UI.confirm(`${where(a, f)} only has <b>${fmt(av)}</b>. Recording <b>${fmt(amount)}</b> takes this section below zero. Save anyway?`, { ok: 'Save anyway' });
+  }
   F.members = () => St.all('members').filter(m => !m.archived || P().some(p => p.memberId === m.id)).sort(U.by('name'));
   const memberFee = (m) => +m.monthlyFee || F.set().monthlyFee;
   const paidFor = (mid, month) => P().filter(p => p.memberId === mid && p.month === month).reduce((s, p) => s + (+p.amount || 0), 0);
@@ -43,8 +110,8 @@
   const cCollected = (cid) => CP().filter(p => p.contribId === cid).reduce((s, p) => s + (+p.amount || 0), 0);
   const cPaidBy = (cid, mid) => CP().filter(p => p.contribId === cid && p.memberId === mid).reduce((s, p) => s + (+p.amount || 0), 0);
   const outstanding = (m) => { let o = 0; feeMonths(m).forEach(mo => { const e = memberFee(m), p = paidFor(m.id, mo); if (p < e) o += e - p; }); CO().forEach(c => { if (c.perMember) { const p = cPaidBy(c.id, m.id); if (p < c.perMember) o += c.perMember - p; } }); return o; };
-  const openings = () => { let cash = 0, bank = 0; OP().forEach(o => { if (o.type === 'Cash') cash += +o.amount || 0; else bank += +o.amount || 0; }); return { cash, bank, total: cash + bank }; };
-  const totals = () => { const o = openings(); let cash = o.cash, bank = o.bank; const add = (method, a) => { if (bucket(method) === 'Cash') cash += a; else bank += a; }; INC().forEach(i => add(i.method, +i.amount || 0)); P().forEach(p => add(p.method, +p.amount || 0)); CP().forEach(p => add(p.method, +p.amount || 0)); EXP().forEach(e => add(e.method, -(+e.amount || 0))); return { cash, bank, total: cash + bank }; };
+  const openings = () => { let cash = 0, bank = 0, mobile = 0; OP().forEach(o => { const a = acctOfOpening(o.type); if (a === 'Cash') cash += +o.amount || 0; else if (a === 'Mobile') mobile += +o.amount || 0; else bank += +o.amount || 0; }); return { cash, bank, mobile, total: cash + bank + mobile }; };
+  const totals = () => { const b = F.balances(); const cash = b.Cash.total, bank = b.Bank.total, mobile = b.Mobile.total; return { cash, bank: bank + mobile, bankOnly: bank, mobile, total: cash + bank + mobile }; };
   const inMonth = (d, m) => d && d.startsWith(m);
   const monthIncome = (m) => INC().filter(i => inMonth(i.date, m)).reduce((s, i) => s + (+i.amount || 0), 0) + P().filter(p => p.month === m).reduce((s, p) => s + (+p.amount || 0), 0) + CP().filter(p => inMonth(p.date, m)).reduce((s, p) => s + (+p.amount || 0), 0);
   const monthExpense = (m) => EXP().filter(e => inMonth(e.date, m)).reduce((s, e) => s + (+e.amount || 0), 0);
@@ -155,7 +222,7 @@
   }
 
   // ---------- module shell ----------
-  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
+  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['accounts', 'Accounts'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
   F.render = (el) => {
     if (CL() && !LK.loaded) { el.innerHTML = '<div class="empty">Checking access…</div>'; return; }
     if (F.locked()) return lockScreen(el);
@@ -165,7 +232,7 @@
       <div class="tabs">${TABS.map(([k, t]) => `<button data-ft="${k}" class="${s.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="finBody"></div>`;
     el.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { s.tab = b.dataset.ft; A._animate = true; A.render(); });
     const body = el.querySelector('#finBody'); bindNames(body); bindBins(body);
-    ({ dash, members, fees, contribs, income, expenses, ledger, reports, cats, settings })[s.tab](body, s);
+    ({ dash, members, fees, contribs, income, expenses, accounts, ledger, reports, cats, settings })[s.tab](body, s);
     A.Charts.bindTips(body); UI.bindGo(body);
   };
   A.M.finance = { render(root) { root.innerHTML = `<div class="hero-h"><div><div class="muted small">Finance & Fundraising department</div><h2>AAC <em>Finance Manager</em></h2></div></div><div id="finRoot"></div>`; F.render(root.querySelector('#finRoot')); } };
@@ -188,7 +255,7 @@
     el.innerHTML = `<div class="kpis">
         <div class="kpi k1"><span class="h"><i>${A.icon('reports')}</i>Total balance</span><span class="b"><span class="v">${U.num(t.total)}</span><span class="f">Cash + bank</span></span></div>
         <div class="kpi k2"><span class="h"><i>${A.icon('finance')}</i>Cash in hand</span><span class="b"><span class="v">${U.num(t.cash)}</span><span class="f">${esc(St.cfg().currency || 'TZS')}</span></span></div>
-        <div class="kpi k3"><span class="h"><i>${A.icon('finance')}</i>Bank & mobile money</span><span class="b"><span class="v">${U.num(t.bank)}</span><span class="f">${esc(St.cfg().currency || 'TZS')}</span></span></div>
+        <div class="kpi k3"><span class="h"><i>${A.icon('finance')}</i>Bank & mobile money</span><span class="b"><span class="v">${U.num(t.bank)}</span><span class="f">Bank ${U.num(t.bankOnly)} · Mobile ${U.num(t.mobile)}</span></span></div>
         <div class="kpi k4"><span class="h"><i>${A.icon('reports')}</i>Net this month</span><span class="b"><span class="v">${inc - exp >= 0 ? '+' : ''}${U.num(inc - exp)}</span><span class="f">${mLabel(cur)}</span></span></div></div>
       <div class="stats">${UI.stat(fmt(inc), 'Income this month', { tone: 'ok' })}${UI.stat(fmt(exp), 'Expenses this month', { tone: 'bad' })}${UI.stat(fmt(P().filter(p => p.month === cur).reduce((s, p) => s + (+p.amount || 0), 0)), 'Fees collected (' + mLabel(cur) + ')')}${UI.stat(fmt(feeOut), 'Fees outstanding this month', { tone: feeOut ? 'warn' : '' })}${UI.stat(fmt(cTot), 'Contributions collected', { f: 'of ' + fmt(cTar) + ' target' })}${UI.stat(`${act} / ${obl.length - Math.min(act, obl.length)}`, 'Members active / pending', { f: `${paid} paid · ${part} partial · ${unpaid} unpaid this month` })}</div>
       <div class="grid g2">
@@ -426,40 +493,99 @@
   // ---------- income & expenses ----------
   function incomeRows() {
     const r = [];
-    INC().forEach(i => r.push({ id: 'i:' + i.id, date: i.date, cat: i.category, desc: i.description || '—', method: i.method, amount: +i.amount || 0, ev: i.eventId }));
-    P().forEach(p => r.push({ id: 'p:' + p.id, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), descRest: ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month }));
-    CP().forEach(p => r.push({ id: 'c:' + p.id, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0, mid: p.memberId }));
+    INC().forEach(i => r.push({ id: 'i:' + i.id, date: i.date, cat: i.category, desc: i.description || '—', method: i.method, amount: +i.amount || 0, ev: i.eventId, fund: fundOf('inc', i, acctOf(i.method)) }));
+    P().forEach(p => r.push({ id: 'p:' + p.id, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), descRest: ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month, fund: fundOf('fee', p, acctOf(p.method)) }));
+    CP().forEach(p => r.push({ id: 'c:' + p.id, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0, mid: p.memberId, fund: fundOf('cpay', p, acctOf(p.method)) }));
     return r.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }
   function income(el) {
-    const rows = incomeRows(); const can = F.canEdit(); const tot = (b) => rows.filter(r => !b || bucket(r.method) === b).reduce((s, r) => s + r.amount, 0);
-    el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="iNew">Record income</button>' : ''}<span class="small muted">Includes membership fees and contribution payments. Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))}</span></div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }, { label: '', f: r => { const [t, x] = r.id.split(':'); return bin((t === 'i' ? 'fin_income' : t === 'p' ? 'fin_payments' : 'fin_cpay') + '|' + x, `${r.cat}: ${r.desc} · ${fmt(r.amount)}`); } }], rows, { click: 1, empty: 'No income recorded yet.' });
+    const rows = incomeRows(); const can = F.canEdit(); const tot = (b) => rows.filter(r => !b || acctOf(r.method) === b).reduce((s, r) => s + r.amount, 0);
+    el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="iNew">Record income</button>' : ''}<span class="small muted">Includes membership fees and contribution payments. Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))} · Mobile ${fmt(tot('Mobile'))}</span></div>` +
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Into', f: r => methodPill(r.method) + `<div class="small muted">› ${esc(r.fund)}</div>` }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }, { label: '', f: r => { const [t, x] = r.id.split(':'); return bin((t === 'i' ? 'fin_income' : t === 'p' ? 'fin_payments' : 'fin_cpay') + '|' + x, `${r.cat}: ${r.desc} · ${fmt(r.amount)}`); } }], rows, { click: 1, empty: 'No income recorded yet.' });
     const nb = el.querySelector('#iNew'); if (nb) nb.onclick = () => incomeForm();
     UI.bindRows(el, id => { const [t, x] = id.split(':'); if (t === 'i') incomeForm(St.get('fin_income', x)); else if (t === 'p') { const p = St.get('fin_payments', x); can ? editPayment(p) : memberDetail(p.memberId); } else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c && can) contribPay(c, p); } });
   }
   function incomeForm(rec) {
     rec = rec || { date: U.today(), category: 'Donation', method: 'Cash' };
-    UI.edit({ title: rec.id ? 'Edit income' : 'Record income', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.incomeCats(), rec.category), blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'receivedFrom', label: 'Received from' }, { k: 'ref', label: 'Reference / receipt no.' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }],
+    UI.edit({ title: rec.id ? 'Edit income' : 'Record income', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.incomeCats(), rec.category), blank: false }, methodField, fundField('Goes into section'), { k: 'description', label: 'Description', full: true }, { k: 'receivedFrom', label: 'Received from' }, { k: 'ref', label: 'Reference / receipt no.' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }],
+      after: (body) => bindFund(body, { acct: '#f_method', fund: '#f_fund', want: rec.fund, guess: (a) => secMatch(F.sections(a), (body.querySelector('#f_category') || {}).value) || 'General', watch: ['#f_category'], coll: 'fin_income', id: rec.id }),
       onSave: v => { guard(); return St.put('fin_income', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: 'Income ' + v.category }); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_income', rec.id); } : null });
   }
   F.expenseForm = (rec, after) => {
     rec = Object.assign({ date: U.today(), category: 'Other', method: 'Cash' }, rec || {});
-    UI.edit({ title: rec.id ? 'Edit expense' : 'Record expense', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.expenseCats(), rec.category), blank: false }, methodField, { k: 'description', label: 'Description', full: true }, { k: 'paidTo', label: 'Paid to' }, { k: 'approvedBy', label: 'Approved by' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }, { k: 'deptId', label: 'Department (optional)', type: 'select', options: UI.opt.depts() }, { k: 'ref', label: 'Receipt / reference no.' }],
-      onSave: async v => { guard(); const saved = await St.put('fin_expenses', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: 'Expense ' + v.category }); if (after) await after(saved); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_expenses', rec.id); } : null });
+    UI.edit({ title: rec.id ? 'Edit expense' : 'Record expense', rec, canEdit: F.canEdit(), fields: [{ k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true }, { k: 'category', label: 'Category', type: 'select', options: withCur(F.expenseCats(), rec.category), blank: false }, methodField, fundField('Paid from section'), { k: 'description', label: 'Description', full: true }, { k: 'paidTo', label: 'Paid to' }, { k: 'approvedBy', label: 'Approved by' }, { k: 'eventId', label: 'Linked event (optional)', type: 'select', options: UI.opt.events() }, { k: 'deptId', label: 'Department (optional)', type: 'select', options: UI.opt.depts() }, { k: 'ref', label: 'Receipt / reference no.' }],
+      after: (body) => bindFund(body, { acct: '#f_method', fund: '#f_fund', want: rec.fund, out: true, coll: 'fin_expenses', id: rec.id }),
+      onSave: async v => { guard(); if (!(await overdraftOk(acctOf(v.method), v.fund, v.amount, 'fin_expenses', rec.id))) return false; const saved = await St.put('fin_expenses', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: 'Expense ' + v.category }); if (after) await after(saved); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_expenses', rec.id); } : null });
   };
   function expenses(el) {
-    const es = EXP().slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')); const can = F.canEdit(); const tot = (b) => es.filter(e => !b || bucket(e.method) === b).reduce((s, e) => s + (+e.amount || 0), 0);
-    el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="eNew">Record expense</button>' : ''}<span class="small muted">Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))}</span></div>` +
-      UI.table([{ label: 'Date', f: e => U.fmtD(e.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: e => esc(e.description || '—') + ([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).length ? `<div class="small muted">${esc([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).join(' · '))}</div>` : '') }, { label: 'Paid to', f: e => esc(e.paidTo || '—') }, { label: 'Type', f: e => methodPill(e.method) }, { label: 'Amount', n: 1, f: e => `<b style="color:var(--bad)">−${fmt(e.amount)}</b>` }, { label: '', f: e => bin('fin_expenses|' + e.id, `${e.category} expense · ${fmt(e.amount)}${e.description ? ' · ' + e.description : ''}`) }], es, { click: 1, empty: 'No expenses recorded yet.' });
+    const es = EXP().slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')); const can = F.canEdit(); const tot = (b) => es.filter(e => !b || acctOf(e.method) === b).reduce((s, e) => s + (+e.amount || 0), 0);
+    el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="eNew">Record expense</button>' : ''}<span class="small muted">Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))} · Mobile ${fmt(tot('Mobile'))}</span></div>` +
+      UI.table([{ label: 'Date', f: e => U.fmtD(e.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: e => esc(e.description || '—') + ([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).length ? `<div class="small muted">${esc([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).join(' · '))}</div>` : '') }, { label: 'Paid to', f: e => esc(e.paidTo || '—') }, { label: 'Paid from', f: e => methodPill(e.method) + `<div class="small muted">› ${esc(fundOf('exp', e, acctOf(e.method)))}</div>` }, { label: 'Amount', n: 1, f: e => `<b style="color:var(--bad)">−${fmt(e.amount)}</b>` }, { label: '', f: e => bin('fin_expenses|' + e.id, `${e.category} expense · ${fmt(e.amount)}${e.description ? ' · ' + e.description : ''}`) }], es, { click: 1, empty: 'No expenses recorded yet.' });
     const nb = el.querySelector('#eNew'); if (nb) nb.onclick = () => F.expenseForm();
     UI.bindRows(el, id => F.expenseForm(St.get('fin_expenses', id)));
   }
-  function ledger(el) {
-    const rows = F.ledger(); const t = totals();
-    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ok">Cash ${fmt(t.cash)}</span><span class="pill info">Bank ${fmt(t.bank)}</span><span class="pill gold">Total ${fmt(t.total)}</span><button class="btn sm" id="lCsv">CSV</button></div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: r => r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc) }, { label: 'Type', f: r => methodPill(r.method) }, { label: 'Income', n: 1, f: r => r.inAmt ? `<span style="color:var(--ok)">${fmt(r.inAmt)}</span>` : '' }, { label: 'Expense', n: 1, f: r => r.outAmt ? `<span style="color:var(--bad)">${fmt(r.outAmt)}</span>` : '' }, { label: 'Cash bal.', n: 1, f: r => fmt(r.cashBal) }, { label: 'Bank bal.', n: 1, f: r => fmt(r.bankBal) }, { label: '', f: r => bin(r.coll + '|' + r.id, `${r.category}: ${r.desc} · ${fmt(r.inAmt || r.outAmt)}`) }], rows.slice().reverse(), { empty: 'No transactions yet.' });
-    el.querySelector('#lCsv').onclick = () => UI.csvDownload('AAC_Finance_Ledger.csv', ['Date', 'Category', 'Description', 'Method', 'Type', 'Income', 'Expense', 'Cash balance', 'Bank balance'], rows.map(r => [r.date, r.category, r.desc, r.method, bucket(r.method), r.inAmt || '', r.outAmt || '', r.cashBal, r.bankBal])).catch(UI.fail);
+  // ---------- accounts: balance of every account and section ----------
+  function accounts(el, st) {
+    const b = F.balances(), can = F.canEdit(), E = F.entries();
+    const total = F.ACCTS.reduce((t, [a]) => t + b[a].total, 0);
+    const used = (a, f) => E.some(e => e.acct === a && e.fund === f);
+    const allFunds = U.uniq(F.ACCTS.flatMap(([a]) => Object.keys(b[a].funds)));
+    const neg = (v) => v < 0 ? ' style="color:var(--bad)"' : '';
+    el.innerHTML = `<div class="row between" style="margin-bottom:12px"><div class="row"><span class="pill gold">All accounts ${fmt(total)}</span>${F.ACCTS.map(([a]) => `<span class="pill ${a === 'Cash' ? 'ok' : 'info'}">${esc(acctName(a))} ${fmt(b[a].total)}</span>`).join('')}</div>${can ? '<button class="btn pri" id="trNew">Move money</button>' : ''}</div>
+      <p class="small muted" style="margin:-4px 0 12px">Each account is split into sections. Income goes <b>into</b> a section, expenses are paid <b>from</b> a section, and "Move money" shifts money between sections or accounts (for example depositing cash fees in the bank). Tap a section to see its ledger.</p>
+      <div class="acct-grid">${F.ACCTS.map(([a, n]) => `<div class="card acct"><div class="acct-h"><h3>${esc(n)}</h3><b${neg(b[a].total)}>${fmt(b[a].total)}</b></div>
+        <div class="acct-secs">${Object.entries(b[a].funds).sort((x, y) => BUILTIN.indexOf(x[0]) - BUILTIN.indexOf(y[0]) || y[1] - x[1]).map(([f, v]) => `<div class="acct-sec" data-led="${esc(a + '|' + f)}" role="button" tabindex="0"><span>${esc(f)}</span><b${neg(v)}>${fmt(v)}</b>${can && !BUILTIN.includes(f) && userSecs(a).includes(f) && !used(a, f) ? `<button class="rowdel" data-rmsec="${esc(a + '|' + f)}" aria-label="Remove section ${esc(f)}" title="Remove section">✕</button>` : ''}</div>`).join('')}</div>
+        ${can ? `<button class="btn sm" data-addsec="${a}" style="margin-top:10px">+ Add section</button>` : ''}</div>`).join('')}</div>
+      <div class="card"><h3>Sections across accounts</h3>${UI.table([{ label: 'Section', f: r => `<b>${esc(r.f)}</b>` }, ...F.ACCTS.map(([a]) => ({ label: acctName(a), n: 1, f: r => `<span${neg(b[a].funds[r.f] || 0)}>${fmt(b[a].funds[r.f] || 0)}</span>` })), { label: 'Total', n: 1, f: r => `<b${neg(r.t)}>${fmt(r.t)}</b>` }], allFunds.map(f => ({ id: f, f, t: F.ACCTS.reduce((t, [a]) => t + (b[a].funds[f] || 0), 0) })), { empty: 'Nothing recorded yet.' })}</div>`;
+    const tr = el.querySelector('#trNew'); if (tr) tr.onclick = () => transferForm();
+    el.querySelectorAll('[data-led]').forEach(x => { const go = (e) => { if (e.target.closest('[data-rmsec]')) return; const [a, f] = x.dataset.led.split('|'); Object.assign(st, { tab: 'ledger', lAcct: a, lFund: f }); A.render(); }; x.onclick = go; x.onkeydown = (e) => { if (e.key === 'Enter') go(e); }; });
+    el.querySelectorAll('[data-addsec]').forEach(x => x.onclick = () => {
+      const a = x.dataset.addsec;
+      UI.edit({ title: 'Add a section to ' + acctName(a), rec: {}, fields: [{ k: 'name', label: 'Section name (e.g. Sadaka, Uniforms fund, Tour fund)', req: true, full: true }], onSave: async v => {
+        guard(); const name = String(v.name || '').trim().replace(/\s+/g, ' ').replace(/[|]/g, '');
+        if (!name) return false; if (secMatch(F.sections(a), name)) { UI.toast(name + ' is already a section of ' + acctName(a), true); return false; }
+        const cur = St.get('fin_settings', 'main') || {}; const secs = Object.assign({}, cur.sections || {}); secs[a] = (secs[a] || []).concat([name]);
+        await St.put('fin_settings', Object.assign({}, cur, { id: 'main', sections: secs }), { summary: 'Section added: ' + acctName(a) + ' › ' + name });
+      } });
+    });
+    el.querySelectorAll('[data-rmsec]').forEach(x => x.onclick = async (e) => {
+      e.stopPropagation(); const [a, f] = x.dataset.rmsec.split('|');
+      if (!(await UI.confirm(`Remove the section <b>${esc(f)}</b> from ${esc(acctName(a))}?`, { ok: 'Remove', danger: true }))) return;
+      try { guard(); const cur = St.get('fin_settings', 'main') || {}; const secs = Object.assign({}, cur.sections || {}); secs[a] = (secs[a] || []).filter(y => y !== f); await St.put('fin_settings', Object.assign({}, cur, { id: 'main', sections: secs }), { summary: 'Section removed: ' + acctName(a) + ' › ' + f }); UI.toast('Section removed'); }
+      catch (x2) { UI.fail(x2); }
+    });
+  }
+  /** move money between accounts and/or sections (e.g. cash fees deposited in the bank) */
+  function transferForm(rec) {
+    rec = rec || { date: U.today(), fromAcct: 'Cash', fromFund: 'Fees', toAcct: 'Bank', toFund: 'Fees' };
+    UI.edit({ title: rec.id ? 'Edit money movement' : 'Move money', rec, canEdit: F.canEdit(), fields: [
+      { k: 'date', label: 'Date', type: 'date', req: true }, { k: 'amount', label: 'Amount', type: 'number', min: 1, req: true },
+      { k: 'fromAcct', label: 'From account', type: 'select', options: F.ACCTS, blank: false }, { k: 'fromFund', label: 'From section', type: 'select', options: [], blank: false },
+      { k: 'toAcct', label: 'To account', type: 'select', options: F.ACCTS, blank: false }, { k: 'toFund', label: 'To section', type: 'select', options: [], blank: false },
+      { k: 'note', label: 'Note (e.g. deposited at CRDB, slip no.)', full: true }],
+      after: (body) => { const id = (x) => x; bindFund(body, { acct: '#f_fromAcct', fund: '#f_fromFund', want: rec.fromFund, toAcct: id, out: true, coll: 'fin_transfers', id: rec.id }); bindFund(body, { acct: '#f_toAcct', fund: '#f_toFund', want: rec.toFund, toAcct: id, coll: 'fin_transfers', id: rec.id }); },
+      validate: v => v.fromAcct === v.toAcct && v.fromFund === v.toFund ? ['Choose a different account or section to move the money to.'] : [],
+      onSave: async v => { guard(); if (!(await overdraftOk(v.fromAcct, v.fromFund, v.amount, 'fin_transfers', rec.id))) return false; return St.put('fin_transfers', Object.assign({}, rec, v, { recordedBy: rec.recordedBy || A.Auth.uid || null }), { summary: `Moved ${fmt(v.amount)} ${acctName(v.fromAcct)} › ${v.fromFund} → ${acctName(v.toAcct)} › ${v.toFund}` }); },
+      deleteFn: rec.id ? () => { guard(); return St.del('fin_transfers', rec.id); } : null, deleteLabel: 'Delete this movement' });
+  }
+  // ---------- ledger: debit / credit for any account or section, with running balance ----------
+  function ledger(el, st) {
+    const a = st.lAcct || '', f = a ? (st.lFund || '') : '';
+    const all = F.entries().filter(e => (!a || e.acct === a) && (!f || e.fund === f));
+    let run = 0; const rows = all.map((e, i) => { run += e.amt; return Object.assign({}, e, { bal: run, rec: e.id, rid: e.coll + ':' + e.id + ':' + i }); });
+    const dr = all.reduce((t, e) => t + (e.amt > 0 ? e.amt : 0), 0), cr = all.reduce((t, e) => t + (e.amt < 0 ? -e.amt : 0), 0);
+    const b = F.balances(); const funds = a ? Object.keys(b[a].funds) : [];
+    const title = a ? (f ? where(a, f) : esc(acctName(a))) : 'All accounts';
+    el.innerHTML = `<div class="filters"><label>Account<select id="lA"><option value="">All accounts</option>${F.ACCTS.map(([k, n]) => `<option value="${k}" ${k === a ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+        <label>Section<select id="lF" ${a ? '' : 'disabled'}><option value="">All sections</option>${funds.map(x => `<option ${x === f ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label></div>
+      <div class="row" style="margin-bottom:10px"><span class="pill gold">${title}: ${fmt(dr - cr)}</span><span class="pill ok">Money in (debit) ${fmt(dr)}</span><span class="pill bad">Money out (credit) ${fmt(cr)}</span><button class="btn sm" id="lCsv">CSV</button>${F.canEdit() ? '<button class="btn sm" id="lTr">Move money</button>' : ''}</div>` +
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, ...(f ? [] : [{ label: 'Account › section', f: r => `<span class="small">${where(r.acct, r.fund)}</span>` }]), { label: 'Details', f: r => `<span class="pill ${r.kind === 'Expense' ? 'bad' : r.kind === 'Transfer' ? 'info' : r.kind === 'Balance' ? '' : 'ok'}" style="margin-right:6px">${esc(r.cat || r.kind)}</span>` + (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) }, { label: 'Debit (in)', n: 1, f: r => r.amt > 0 ? `<span style="color:var(--ok)">${fmt(r.amt)}</span>` : '' }, { label: 'Credit (out)', n: 1, f: r => r.amt < 0 ? `<span style="color:var(--bad)">${fmt(-r.amt)}</span>` : '' }, { label: 'Balance', n: 1, f: r => `<b${r.bal < 0 ? ' style="color:var(--bad)"' : ''}>${fmt(r.bal)}</b>` }, { label: '', f: r => bin(r.coll + '|' + r.rec, `${r.cat}: ${r.desc} · ${fmt(Math.abs(r.amt))}`) }], rows.slice().reverse().map(r => Object.assign(r, { id: r.rid })), { click: 1, empty: 'No transactions here yet.' });
+    el.querySelector('#lA').onchange = (e) => { st.lAcct = e.target.value; st.lFund = ''; A.render(); };
+    el.querySelector('#lF').onchange = (e) => { st.lFund = e.target.value; A.render(); };
+    const t = el.querySelector('#lTr'); if (t) t.onclick = () => transferForm(a ? { date: U.today(), fromAcct: a, fromFund: f || 'General', toAcct: a === 'Bank' ? 'Cash' : 'Bank', toFund: f || 'General' } : undefined);
+    UI.bindRows(el, rid => { const [c, id] = rid.split(':'); const r = St.get(c, id); if (!r || !F.canEdit()) return;
+      if (c === 'fin_income') incomeForm(r); else if (c === 'fin_expenses') F.expenseForm(r); else if (c === 'fin_transfers') transferForm(r); else if (c === 'fin_openings') balForm(r); else if (c === 'fin_payments') editPayment(r); else if (c === 'fin_cpay') { const co = St.get('fin_contribs', r.contribId); if (co) contribPay(co, r); } });
+    el.querySelector('#lCsv').onclick = () => UI.csvDownload(`AAC_Ledger_${(a ? acctName(a) + (f ? '_' + f : '') : 'All').replace(/[^A-Za-z0-9]+/g, '_')}.csv`, ['Date', 'Account', 'Section', 'Category', 'Details', 'Debit (in)', 'Credit (out)', 'Balance'], rows.map(r => [r.date, acctName(r.acct), r.fund, r.cat, r.desc, r.amt > 0 ? r.amt : '', r.amt < 0 ? -r.amt : '', r.bal])).catch(UI.fail);
   }
 
   // ---------- categories ----------
@@ -501,7 +627,7 @@
     const obl = obligated(); const fe = obl.reduce((s, m) => s + memberFee(m), 0), fc = P().filter(p => p.month === cur).reduce((s, p) => s + (+p.amount || 0), 0);
     el.innerHTML = `<div class="row" style="margin-bottom:12px"><button class="btn pri" id="rPdf">Finance report PDF</button><button class="btn" id="rXls">Export Excel</button></div>
       <div class="grid g2">
-        <div class="card"><h3>Financial position (all time)</h3><dl class="kv"><dt>Cash</dt><dd>${fmt(t.cash)}</dd><dt>Bank & mobile money</dt><dd>${fmt(t.bank)}</dd><dt><b>Total</b></dt><dd><b>${fmt(t.total)}</b></dd></dl></div>
+        <div class="card"><h3>Financial position (all time)</h3><dl class="kv"><dt>Cash</dt><dd>${fmt(t.cash)}</dd><dt>Bank</dt><dd>${fmt(t.bankOnly)}</dd><dt>Mobile money</dt><dd>${fmt(t.mobile)}</dd><dt><b>Total</b></dt><dd><b>${fmt(t.total)}</b></dd></dl></div>
         <div class="card"><h3>${mLabel(cur)}</h3><dl class="kv"><dt>Income</dt><dd style="color:var(--ok)">+${fmt(inc)}</dd><dt>Expenses</dt><dd style="color:var(--bad)">−${fmt(exp)}</dd><dt><b>Net</b></dt><dd><b>${fmt(inc - exp)}</b></dd><dt>Fees expected / collected</dt><dd>${fmt(fe)} / ${fmt(fc)}</dd></dl></div>
         <div class="card"><h3>Income by source</h3>${C.donut(Object.entries(bi).filter(([, v]) => v > 0).map(([k, v], i) => ({ label: k, value: Math.round(v), color: L.PALETTE[i % 12][0] })), U.num(Object.values(bi).reduce((a, b) => a + b, 0)), 'total income')}</div>
         <div class="card"><h3>Expenses by category</h3>${C.donut(Object.entries(be).map(([k, v], i) => ({ label: k, value: Math.round(v), color: L.PALETTE[(i + 3) % 12][0] })), U.num(Object.values(be).reduce((a, b) => a + b, 0)), 'total expenses')}</div>
@@ -516,8 +642,9 @@
   async function exportExcel() {
     if (typeof XLSX === 'undefined') throw new Error('The Excel library did not load. Check your connection and reload.');
     const wb = XLSX.utils.book_new(); const add = (rows, name) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name); const t = totals();
-    add([['Metric', 'Amount'], ['Cash balance', t.cash], ['Bank balance', t.bank], ['Total balance', t.total]], 'Summary');
-    add([['Date', 'Category', 'Description', 'Type', 'Income', 'Expense', 'Cash Balance', 'Bank Balance'], ...F.ledger().map(r => [r.date, r.category, r.desc, bucket(r.method), r.inAmt || '', r.outAmt || '', r.cashBal, r.bankBal])], 'Ledger');
+    add([['Metric', 'Amount'], ['Cash balance', t.cash], ['Bank balance', t.bankOnly], ['Mobile money balance', t.mobile], ['Total balance', t.total]], 'Summary');
+    { const b = F.balances(); add([['Account', 'Section', 'Balance'], ...F.ACCTS.flatMap(([a]) => Object.entries(b[a].funds).map(([f, v]) => [acctName(a), f, v]))], 'Accounts'); }
+    { let run = 0; add([['Date', 'Account', 'Section', 'Category', 'Details', 'Debit (in)', 'Credit (out)', 'Balance'], ...F.entries().map(r => { run += r.amt; return [r.date, acctName(r.acct), r.fund, r.cat, r.desc, r.amt > 0 ? r.amt : '', r.amt < 0 ? -r.amt : '', run]; })], 'Ledger'); }
     add([['Name', 'Member ID', 'Phone', 'Email', 'Gender', 'Section', 'Date Joined', 'Monthly Fee', 'Status', 'Months Paid', 'Outstanding'], ...F.members().map(m => [m.name, m.memberCode || '', m.phone || '', m.email || '', m.gender || '', (m.sections || [])[0] || '', m.dateJoined || '', m.monthlyFee || '', status(m), paidMonths(m), outstanding(m)])], 'Members');
     add([['Name', 'Description', 'Target', 'Required Per Member', 'Start Date', 'Deadline', 'Responsible', 'Collected'], ...CO().map(c => [c.name, c.description || '', c.target || 0, c.perMember || '', c.start || '', c.deadline || '', c.responsible || '', cCollected(c.id)])], 'Contributions');
     add([['Member', 'Member ID', 'Month', 'Amount', 'Date', 'Type (Cash/Bank)'], ...P().map(p => [mName(p.memberId), (St.get('members', p.memberId) || {}).memberCode || '', p.month, p.amount, p.date, p.method])], 'Fee Payments');
@@ -532,7 +659,7 @@
   function settings(el) {
     const can = F.canEdit(); const o = openings(); const s = F.set();
     el.innerHTML = `<div class="grid g2">${pwCard()}<div class="card"><h3>Fee settings</h3>${UI.form([{ k: 'monthlyFee', label: 'Standard monthly fee', type: 'number', min: 0 }, { k: 'threshold', label: 'Months fully paid before a member is Active', type: 'number', min: 1 }, { k: 'feesFrom', label: 'Count unpaid fees from (YYYY-MM)', hint: 'Members who joined earlier are only charged from the current month.' }], s)}<button class="btn pri" id="fsSave" style="margin-top:10px" ${can ? '' : 'disabled'}>Save fee settings</button></div>
-      <div class="card"><h3>Cash in hand & bank balance</h3><p class="small muted">Money you already have. Added to cash and bank totals, not counted as income.</p><div class="row" style="margin-bottom:8px"><span class="pill ok">Cash ${fmt(o.cash)}</span><span class="pill info">Bank ${fmt(o.bank)}</span>${can ? '<button class="btn sm pri" id="obNew">Record balance</button>' : ''}</div>
+      <div class="card"><h3>Cash, bank & mobile money balances</h3><p class="small muted">Money you already have. Added to cash and bank totals, not counted as income.</p><div class="row" style="margin-bottom:8px"><span class="pill ok">Cash ${fmt(o.cash)}</span><span class="pill info">Bank ${fmt(o.bank)}</span><span class="pill info">Mobile ${fmt(o.mobile)}</span>${can ? '<button class="btn sm pri" id="obNew">Record balance</button>' : ''}</div>
         ${UI.table([{ label: 'As of', f: x => U.fmtD(x.date) }, { label: 'Type', f: x => methodPill(x.type) }, { label: 'Note', f: x => esc(x.note || '—') }, { label: 'Amount', n: 1, f: x => fmt(x.amount) }, { label: '', f: x => bin('fin_openings|' + x.id, `${x.type} balance · ${fmt(x.amount)}`) }], OP().sort(U.by('date', -1)), { click: can ? 1 : 0, empty: 'No balances recorded.' })}</div>
       <div class="card"><h3>Bring in data from the old Choir Finance Manager</h3><p class="small muted">In the old app go to Settings → Download backup file (or Show backup as text). Then choose the file or paste the text here. Members are matched to planner members by member ID or name, and new ones are created. Importing the same backup twice does not duplicate anything.</p>
         <div class="row"><label class="btn ${can ? '' : 'disabled'}" for="bkFile">Choose backup file</label><input type="file" id="bkFile" accept=".json,application/json" hidden ${can ? '' : 'disabled'}><button class="btn" id="bkPaste" ${can ? '' : 'disabled'}>Paste backup text</button></div><div id="bkMsg" class="small" style="margin-top:8px">${esc((A.state.fin || {}).bkMsg || '')}</div></div>
@@ -546,11 +673,11 @@
     el.querySelector('#bkPaste').onclick = () => UI.modal({ title: 'Paste backup text', body: '<textarea id="bkT" style="width:100%;min-height:220px;font-family:monospace;font-size:12px"></textarea>', buttons: [{ label: 'Cancel' }, { label: 'Continue', cls: 'pri', onClick: ({ body }) => { setTimeout(() => importBackup(body.querySelector('#bkT').value, el.querySelector('#bkMsg')), 30); } }] });
     el.querySelector('#xTpl').onclick = () => template().catch(UI.fail);
     el.querySelector('#xFile').onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (typeof XLSX === 'undefined') return UI.toast('The Excel library did not load.', true); const r = new FileReader(); r.onload = () => { e.target.value = ''; try { excelPreview(XLSX.read(r.result, { type: 'array', cellDates: true })); } catch (x) { UI.toast('Could not read that file. Use an Excel .xlsx file.', true); } }; r.readAsArrayBuffer(f); };
-    el.querySelector('#bkOut').onclick = async () => { const data = { members: F.members().map(m => ({ id: m.id, name: m.name, memberId: m.memberCode || '', phone: m.phone || '', email: m.email || '', gender: m.gender || '', section: (m.sections || [])[0] || 'Other', dateJoined: m.dateJoined || '', fee: m.monthlyFee || null, overrideStatus: m.finStatus || null })), payments: P(), contributions: CO(), contribPayments: CP(), income: INC(), expenses: EXP(), openings: OP(), settings: Object.assign({ choirName: St.cfg().name || '' }, F.set()) }; try { const ok = await UI.download(`AAC_Finance_backup_${U.today()}.json`, JSON.stringify({ app: 'choir-finance-manager', version: 2, exportedAt: new Date().toISOString(), data }, null, 2)); if (ok) UI.toast('Backup downloaded'); } catch (e) { UI.fail(e); } };
+    el.querySelector('#bkOut').onclick = async () => { const data = { members: F.members().map(m => ({ id: m.id, name: m.name, memberId: m.memberCode || '', phone: m.phone || '', email: m.email || '', gender: m.gender || '', section: (m.sections || [])[0] || 'Other', dateJoined: m.dateJoined || '', fee: m.monthlyFee || null, overrideStatus: m.finStatus || null })), payments: P(), contributions: CO(), contribPayments: CP(), income: INC(), expenses: EXP(), openings: OP(), transfers: TR(), settings: Object.assign({ choirName: St.cfg().name || '' }, F.set()) }; try { const ok = await UI.download(`AAC_Finance_backup_${U.today()}.json`, JSON.stringify({ app: 'choir-finance-manager', version: 2, exportedAt: new Date().toISOString(), data }, null, 2)); if (ok) UI.toast('Backup downloaded'); } catch (e) { UI.fail(e); } };
   }
   function balForm(rec) {
     rec = rec || { type: 'Cash', date: U.today() };
-    UI.edit({ title: rec.id ? 'Edit balance' : 'Record cash in hand / bank balance', rec, fields: [{ k: 'type', label: 'What is this amount?', type: 'select', options: [['Cash', 'Cash in hand'], ['Bank', 'Bank balance']], blank: false }, { k: 'amount', label: 'Amount (negative to correct)', type: 'number', req: true }, { k: 'date', label: 'As of date', type: 'date', req: true }, { k: 'note', label: 'Note', full: true }], validate: v => (!v.amount ? ['Amount cannot be zero.'] : []), onSave: v => { guard(); return St.put('fin_openings', Object.assign({}, rec, v)); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_openings', rec.id); } : null });
+    UI.edit({ title: rec.id ? 'Edit balance' : 'Record cash, bank or mobile money balance', rec, fields: [{ k: 'type', label: 'What is this amount?', type: 'select', options: [['Cash', 'Cash in hand'], ['Bank', 'Bank balance'], ['Mobile', 'Mobile money balance']], blank: false }, fundField('Section'), { k: 'amount', label: 'Amount (negative to correct)', type: 'number', req: true }, { k: 'date', label: 'As of date', type: 'date', req: true }, { k: 'note', label: 'Note', full: true }], after: (body) => bindFund(body, { acct: '#f_type', fund: '#f_fund', want: rec.fund, toAcct: acctOfOpening, coll: 'fin_openings', id: rec.id }), validate: v => (!v.amount ? ['Amount cannot be zero.'] : []), onSave: v => { guard(); return St.put('fin_openings', Object.assign({}, rec, v)); }, deleteFn: rec.id ? () => { guard(); return St.del('fin_openings', rec.id); } : null });
   }
 
   /** match or create a planner member for an imported finance member */

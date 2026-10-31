@@ -299,7 +299,7 @@
     for (const s of St.all('sessions').filter(s => demoPlans.has(s.planId))) { await St.del('sessions', s.id, { audit: false }); n++; }
     for (const a of St.all('assignments').filter(a => demoPlans.has(a.planId))) { await St.del('assignments', a.id, { audit: false }); n++; }
     for (const a of St.all('readiness').filter(a => demoPlans.has(a.planId))) { await St.del('readiness', a.id, { audit: false }); n++; }
-    for (const c of ['fin_payments', 'fin_cpay', 'fin_contribs', 'fin_income', 'fin_expenses', 'fin_openings', 'deptbudget', 'deptnotes', 'slots', 'series', 'plans', 'events', 'songs', 'collections', 'tasks', 'members', 'departments', 'travel', 'activities', 'objectives']) for (const x of St.all(c).filter(x => x.isDemo)) { await St.del(c, x.id, { audit: false }); n++; }
+    for (const c of ['fin_transfers', 'fin_payments', 'fin_cpay', 'fin_contribs', 'fin_income', 'fin_expenses', 'fin_openings', 'deptbudget', 'deptnotes', 'slots', 'series', 'plans', 'events', 'songs', 'collections', 'tasks', 'members', 'departments', 'travel', 'activities', 'objectives']) for (const x of St.all(c).filter(x => x.isDemo)) { await St.del(c, x.id, { audit: false }); n++; }
     await St.audit('demo', 'cfg', 'demo', `Removed ${n} demo records`);
     return n;
   }
