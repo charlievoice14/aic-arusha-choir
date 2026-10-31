@@ -85,7 +85,7 @@ window.App = window.App || {};
   }
 
   // ---------- store ----------
-  const COLLS = ['cfg', 'roles', 'departments', 'members', 'years', 'objectives', 'activities', 'events', 'finance', 'tasks', 'travel', 'songs', 'collections', 'plans', 'series', 'sessions', 'assignments', 'readiness', 'attendance', 'notifications', 'approvals', 'audit', 'exports', 'templates', 'slots', 'deptnotes', 'deptbudget', 'fin_payments', 'fin_contribs', 'fin_cpay', 'fin_income', 'fin_expenses', 'fin_openings', 'fin_settings', 'fin_transfers'];
+  const COLLS = ['cfg', 'roles', 'departments', 'members', 'years', 'objectives', 'activities', 'events', 'finance', 'tasks', 'travel', 'songs', 'collections', 'plans', 'series', 'sessions', 'assignments', 'readiness', 'attendance', 'notifications', 'approvals', 'audit', 'exports', 'templates', 'slots', 'deptnotes', 'deptbudget', 'fin_payments', 'fin_contribs', 'fin_cpay', 'fin_income', 'fin_expenses', 'fin_openings', 'fin_settings', 'fin_transfers', 'fin_journals'];
   const LIMITED = { audit: 400, exports: 150, notifications: 300 };
   const Store = A.Store = {
     db: null, mode: 'loading', S: {}, ready: {}, error: null, onChange: null, denied: {}, unsub: {},
@@ -135,6 +135,7 @@ window.App = window.App || {};
       const body = Object.assign({}, prev || {}, obj, { id, updatedAt: now, updatedBy: A.Auth.uid || null });
       if (!prev) { body.createdAt = body.createdAt || now; body.createdBy = body.createdBy || A.Auth.uid || null; }
       if (c === 'audit' || c === 'exports' || c === 'notifications' || c === 'approvals') body.at = body.at || now;
+      if (this.beforePut) this.beforePut(c, body, prev);
       // optimistic local update so the UI responds before the server confirms
       this.S[c].set(id, body); A.L && A.L.invalidate();
       try {

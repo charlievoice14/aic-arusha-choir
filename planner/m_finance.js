@@ -64,6 +64,7 @@
       E.push({ date: t.date, acct: t.fromAcct, fund: t.fromFund, amt: -(+t.amount || 0), kind: 'Transfer', cat: 'Transfer out', desc: d, coll: 'fin_transfers', id: t.id });
       E.push({ date: t.date, acct: t.toAcct, fund: t.toFund, amt: +t.amount || 0, kind: 'Transfer', cat: 'Transfer in', desc: d, coll: 'fin_transfers', id: t.id });
     });
+    JV().forEach(j => (j.lines || []).forEach(l => { const [g, a, f] = String(l.ledger || '').split('|'); if (g !== 'A') return; const amt = (+l.dr || 0) - (+l.cr || 0); if (amt) E.push({ date: j.date, acct: a, fund: f, amt, kind: 'Journal', cat: 'Journal ' + (j.vno || ''), desc: j.narration || 'Journal', coll: 'fin_journals', id: j.id }); }));
     return E.sort((x, y) => (x.date || '').localeCompare(y.date || '') || (y.amt - x.amt));
   };
   /** balance of every account and of every section inside it */
@@ -223,7 +224,7 @@
   }
 
   // ---------- module shell ----------
-  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['accounts', 'Accounts'], ['ledger', 'Ledger'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
+  const TABS = [['dash', 'Dashboard'], ['members', 'Members'], ['fees', 'Fees'], ['contribs', 'Fundraising & contributions'], ['income', 'Income'], ['expenses', 'Expenses'], ['accounts', 'Accounts'], ['ledger', 'Ledger'], ['books', 'Books & statements'], ['reports', 'Reports'], ['cats', 'Categories'], ['settings', 'Settings & import']];
   F.render = (el) => {
     if (CL() && !LK.loaded) { el.innerHTML = '<div class="empty">Checking access…</div>'; return; }
     if (F.locked()) return lockScreen(el);
@@ -233,7 +234,8 @@
       <div class="tabs">${TABS.map(([k, t]) => `<button data-ft="${k}" class="${s.tab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="finBody"></div>`;
     el.querySelectorAll('[data-ft]').forEach(b => b.onclick = () => { s.tab = b.dataset.ft; A._animate = true; A.render(); });
     const body = el.querySelector('#finBody'); bindNames(body); bindBins(body);
-    ({ dash, members, fees, contribs, income, expenses, accounts, ledger, reports, cats, settings })[s.tab](body, s);
+    ({ dash, members, fees, contribs, income, expenses, accounts, ledger, books, reports, cats, settings })[s.tab](body, s);
+    setTimeout(numberOld, 400);
     A.Charts.bindTips(body); UI.bindGo(body);
   };
   A.M.finance = { render(root) { root.innerHTML = `<div class="hero-h"><div><div class="muted small">Finance & Fundraising department</div><h2>AAC <em>Finance Manager</em></h2></div></div><div id="finRoot"></div>`; F.render(root.querySelector('#finRoot')); } };
@@ -494,15 +496,15 @@
   // ---------- income & expenses ----------
   function incomeRows() {
     const r = [];
-    INC().forEach(i => r.push({ id: 'i:' + i.id, date: i.date, cat: i.category, desc: i.description || '—', method: i.method, amount: +i.amount || 0, ev: i.eventId, fund: fundOf('inc', i, acctOf(i.method)) }));
-    P().forEach(p => r.push({ id: 'p:' + p.id, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), descRest: ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month, fund: fundOf('fee', p, acctOf(p.method)) }));
-    CP().forEach(p => r.push({ id: 'c:' + p.id, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0, mid: p.memberId, fund: fundOf('cpay', p, acctOf(p.method)) }));
+    INC().forEach(i => r.push({ id: 'i:' + i.id, vno: i.vno, date: i.date, cat: i.category, desc: i.description || '—', method: i.method, amount: +i.amount || 0, ev: i.eventId, fund: fundOf('inc', i, acctOf(i.method)) }));
+    P().forEach(p => r.push({ id: 'p:' + p.id, vno: p.vno, date: p.date, cat: 'Membership Fee', desc: mName(p.memberId) + ' — ' + mLabel(p.month), descRest: ' — ' + mLabel(p.month), method: p.method, amount: +p.amount || 0, mid: p.memberId, month: p.month, fund: fundOf('fee', p, acctOf(p.method)) }));
+    CP().forEach(p => r.push({ id: 'c:' + p.id, vno: p.vno, date: p.date, cat: 'Contribution', desc: mName(p.memberId) + ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), descRest: ' — ' + ((St.get('fin_contribs', p.contribId) || {}).name || 'Deleted'), method: p.method, amount: +p.amount || 0, mid: p.memberId, fund: fundOf('cpay', p, acctOf(p.method)) }));
     return r.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   }
   function income(el) {
     const rows = incomeRows(); const can = F.canEdit(); const tot = (b) => rows.filter(r => !b || acctOf(r.method) === b).reduce((s, r) => s + r.amount, 0);
     el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="iNew">Record income</button>' : ''}<span class="small muted">Includes membership fees and contribution payments. Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))} · Mobile ${fmt(tot('Mobile'))}</span></div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Into', f: r => methodPill(r.method) + `<div class="small muted">› ${esc(r.fund)}</div>` }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }, { label: '', f: r => { const [t, x] = r.id.split(':'); return bin((t === 'i' ? 'fin_income' : t === 'p' ? 'fin_payments' : 'fin_cpay') + '|' + x, `${r.cat}: ${r.desc} · ${fmt(r.amount)}`); } }], rows, { click: 1, empty: 'No income recorded yet.' });
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) + (r.vno ? `<div class="small muted mono">${esc(r.vno)}</div>` : '') }, { label: 'Category', k: 'cat' }, { label: 'Description', f: r => (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) + (r.ev ? `<div class="small muted">Event: ${esc((St.get('events', r.ev) || {}).title || '')}</div>` : '') }, { label: 'Into', f: r => methodPill(r.method) + `<div class="small muted">› ${esc(r.fund)}</div>` }, { label: 'Amount', n: 1, f: r => `<b style="color:var(--ok)">+${fmt(r.amount)}</b>` }, { label: '', f: r => { const [t, x] = r.id.split(':'); return bin((t === 'i' ? 'fin_income' : t === 'p' ? 'fin_payments' : 'fin_cpay') + '|' + x, `${r.cat}: ${r.desc} · ${fmt(r.amount)}`); } }], rows, { click: 1, empty: 'No income recorded yet.' });
     const nb = el.querySelector('#iNew'); if (nb) nb.onclick = () => incomeForm();
     UI.bindRows(el, id => { const [t, x] = id.split(':'); if (t === 'i') incomeForm(St.get('fin_income', x)); else if (t === 'p') { const p = St.get('fin_payments', x); can ? editPayment(p) : memberDetail(p.memberId); } else { const p = St.get('fin_cpay', x); const c = St.get('fin_contribs', p.contribId); if (c && can) contribPay(c, p); } });
   }
@@ -521,7 +523,7 @@
   function expenses(el) {
     const es = EXP().slice().sort((a, b) => (b.date || '').localeCompare(a.date || '')); const can = F.canEdit(); const tot = (b) => es.filter(e => !b || acctOf(e.method) === b).reduce((s, e) => s + (+e.amount || 0), 0);
     el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="eNew">Record expense</button>' : ''}<span class="small muted">Total ${fmt(tot())} · Cash ${fmt(tot('Cash'))} · Bank ${fmt(tot('Bank'))} · Mobile ${fmt(tot('Mobile'))}</span></div>` +
-      UI.table([{ label: 'Date', f: e => U.fmtD(e.date) }, { label: 'Category', k: 'category' }, { label: 'Description', f: e => esc(e.description || '—') + ([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).length ? `<div class="small muted">${esc([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).join(' · '))}</div>` : '') }, { label: 'Paid to', f: e => esc(e.paidTo || '—') }, { label: 'Paid from', f: e => methodPill(e.method) + `<div class="small muted">› ${esc(fundOf('exp', e, acctOf(e.method)))}</div>` }, { label: 'Amount', n: 1, f: e => `<b style="color:var(--bad)">−${fmt(e.amount)}</b>` }, { label: '', f: e => bin('fin_expenses|' + e.id, `${e.category} expense · ${fmt(e.amount)}${e.description ? ' · ' + e.description : ''}`) }], es, { click: 1, empty: 'No expenses recorded yet.' });
+      UI.table([{ label: 'Date', f: e => U.fmtD(e.date) + (e.vno ? `<div class="small muted mono">${esc(e.vno)}</div>` : '') }, { label: 'Category', k: 'category' }, { label: 'Description', f: e => esc(e.description || '—') + ([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).length ? `<div class="small muted">${esc([e.eventId && 'Event: ' + ((St.get('events', e.eventId) || {}).title || ''), e.deptId && L.deptName(e.deptId)].filter(Boolean).join(' · '))}</div>` : '') }, { label: 'Paid to', f: e => esc(e.paidTo || '—') }, { label: 'Paid from', f: e => methodPill(e.method) + `<div class="small muted">› ${esc(fundOf('exp', e, acctOf(e.method)))}</div>` }, { label: 'Amount', n: 1, f: e => `<b style="color:var(--bad)">−${fmt(e.amount)}</b>` }, { label: '', f: e => bin('fin_expenses|' + e.id, `${e.category} expense · ${fmt(e.amount)}${e.description ? ' · ' + e.description : ''}`) }], es, { click: 1, empty: 'No expenses recorded yet.' });
     const nb = el.querySelector('#eNew'); if (nb) nb.onclick = () => F.expenseForm();
     UI.bindRows(el, id => F.expenseForm(St.get('fin_expenses', id)));
   }
@@ -580,13 +582,210 @@
     el.innerHTML = `<div class="filters"><label>Account<select id="lA"><option value="">All accounts</option>${F.ACCTS.map(([k, n]) => `<option value="${k}" ${k === a ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
         <label>Section<select id="lF" ${a ? '' : 'disabled'}><option value="">All sections</option>${funds.map(x => `<option ${x === f ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></label></div>
       <div class="row" style="margin-bottom:10px"><span class="pill gold">${title}: ${fmt(dr - cr)}</span><span class="pill ok">Money in (debit) ${fmt(dr)}</span><span class="pill bad">Money out (credit) ${fmt(cr)}</span><button class="btn sm" id="lCsv">CSV</button>${F.canEdit() ? '<button class="btn sm" id="lTr">Move money</button>' : ''}</div>` +
-      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, ...(f ? [] : [{ label: 'Account › section', f: r => `<span class="small">${where(r.acct, r.fund)}</span>` }]), { label: 'Details', f: r => `<span class="pill ${r.kind === 'Expense' ? 'bad' : r.kind === 'Transfer' ? 'info' : r.kind === 'Balance' ? '' : 'ok'}" style="margin-right:6px">${esc(r.cat || r.kind)}</span>` + (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) }, { label: 'Debit (in)', n: 1, f: r => r.amt > 0 ? `<span style="color:var(--ok)">${fmt(r.amt)}</span>` : '' }, { label: 'Credit (out)', n: 1, f: r => r.amt < 0 ? `<span style="color:var(--bad)">${fmt(-r.amt)}</span>` : '' }, { label: 'Balance', n: 1, f: r => `<b${r.bal < 0 ? ' style="color:var(--bad)"' : ''}>${fmt(r.bal)}</b>` }, { label: '', f: r => bin(r.coll + '|' + r.rec, `${r.cat}: ${r.desc} · ${fmt(Math.abs(r.amt))}`) }], rows.slice().reverse().map(r => Object.assign(r, { id: r.rid })), { click: 1, empty: 'No transactions here yet.' });
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) + ((St.get(r.coll, r.rec) || {}).vno ? `<div class="small muted mono">${esc(St.get(r.coll, r.rec).vno)}</div>` : '') }, ...(f ? [] : [{ label: 'Account › section', f: r => `<span class="small">${where(r.acct, r.fund)}</span>` }]), { label: 'Details', f: r => `<span class="pill ${r.kind === 'Expense' ? 'bad' : r.kind === 'Transfer' ? 'info' : r.kind === 'Balance' ? '' : 'ok'}" style="margin-right:6px">${esc(r.cat || r.kind)}</span>` + (r.mid ? nameLink(r.mid) + esc(r.descRest) : esc(r.desc)) }, { label: 'Debit (in)', n: 1, f: r => r.amt > 0 ? `<span style="color:var(--ok)">${fmt(r.amt)}</span>` : '' }, { label: 'Credit (out)', n: 1, f: r => r.amt < 0 ? `<span style="color:var(--bad)">${fmt(-r.amt)}</span>` : '' }, { label: 'Balance', n: 1, f: r => `<b${r.bal < 0 ? ' style="color:var(--bad)"' : ''}>${fmt(r.bal)}</b>` }, { label: '', f: r => bin(r.coll + '|' + r.rec, `${r.cat}: ${r.desc} · ${fmt(Math.abs(r.amt))}`) }], rows.slice().reverse().map(r => Object.assign(r, { id: r.rid })), { click: 1, empty: 'No transactions here yet.' });
     el.querySelector('#lA').onchange = (e) => { st.lAcct = e.target.value; st.lFund = ''; A.render(); };
     el.querySelector('#lF').onchange = (e) => { st.lFund = e.target.value; A.render(); };
     const t = el.querySelector('#lTr'); if (t) t.onclick = () => transferForm(a ? { date: U.today(), fromAcct: a, fromFund: f || 'General', toAcct: a === 'Bank' ? 'Cash' : 'Bank', toFund: f || 'General' } : undefined);
     UI.bindRows(el, rid => { const [c, id] = rid.split(':'); const r = St.get(c, id); if (!r || !F.canEdit()) return;
-      if (c === 'fin_income') incomeForm(r); else if (c === 'fin_expenses') F.expenseForm(r); else if (c === 'fin_transfers') transferForm(r); else if (c === 'fin_openings') balForm(r); else if (c === 'fin_payments') editPayment(r); else if (c === 'fin_cpay') { const co = St.get('fin_contribs', r.contribId); if (co) contribPay(co, r); } });
+      openVoucher(c, id); });
     el.querySelector('#lCsv').onclick = () => UI.csvDownload(`AAC_Ledger_${(a ? acctName(a) + (f ? '_' + f : '') : 'All').replace(/[^A-Za-z0-9]+/g, '_')}.csv`, ['Date', 'Account', 'Section', 'Category', 'Details', 'Debit (in)', 'Credit (out)', 'Balance'], rows.map(r => [r.date, acctName(r.acct), r.fund, r.cat, r.desc, r.amt > 0 ? r.amt : '', r.amt < 0 ? -r.amt : '', r.bal])).catch(UI.fail);
+  }
+
+  // =====================================================================
+  // Books & statements (Tally-style): ledgers, vouchers, journals, Day Book,
+  // Trial Balance, Income & Expenditure, Balance Sheet, cost centres
+  // =====================================================================
+  const JV = () => St.all('fin_journals');
+  F.LIAB_DEF = ['Loans payable', 'Money owed to suppliers'];
+  F.OASSET_DEF = ['Money owed to the choir', 'Equipment & instruments'];
+  F.liabLedgers = () => { const l = (St.get('fin_settings', 'main') || {}).liabLedgers; return Array.isArray(l) ? l : F.LIAB_DEF; };
+  F.assetLedgers = () => { const l = (St.get('fin_settings', 'main') || {}).assetLedgers; return Array.isArray(l) ? l : F.OASSET_DEF; };
+  const FUND = 'Accumulated fund';
+  /** voucher types: Receipt, Payment, Contra, Journal, Opening */
+  const VT = { fin_income: ['RCT', 'Receipt'], fin_payments: ['RCT', 'Receipt'], fin_cpay: ['RCT', 'Receipt'], fin_expenses: ['PMT', 'Payment'], fin_transfers: ['CTR', 'Contra'], fin_journals: ['JV', 'Journal'], fin_openings: ['OB', 'Opening balance'] };
+  const vnum = (v) => { const m = /-(\d+)$/.exec(v || ''); return m ? +m[1] : 0; };
+  const nextVno = (pre) => { let mx = 0; Object.keys(VT).filter(c => VT[c][0] === pre).forEach(c => St.all(c).forEach(r => { if (String(r.vno || '').startsWith(pre + '-')) mx = Math.max(mx, vnum(r.vno)); })); return pre + '-' + String(mx + 1).padStart(4, '0'); };
+  /** every new finance record gets the next voucher number of its type */
+  St.beforePut = (c, body) => { if (VT[c] && !body.vno) body.vno = nextVno(VT[c][0]); };
+  let numbering = false;
+  /** give numbers to records saved before voucher numbers existed (oldest first) */
+  async function numberOld() {
+    if (numbering || !F.canEdit() || F.locked() || St.mode !== 'db' || St.FIN.some(c => !St.ready[c])) return;
+    const todo = Object.keys(VT).flatMap(c => St.all(c).filter(r => !r.vno).map(r => ({ c, r }))).sort((a, b) => (a.r.date || '').localeCompare(b.r.date || '') || String(a.r.createdAt || '').localeCompare(String(b.r.createdAt || '')));
+    if (!todo.length) return;
+    numbering = true;
+    try { for (const { c, r } of todo) { if (!St.get(c, r.id) || St.get(c, r.id).vno) continue; await St.patch(c, r.id, { vno: nextVno(VT[c][0]) }, { audit: false }); } }
+    catch (e) { console.warn('voucher numbering', e); } finally { numbering = false; }
+  }
+  const L_ = (g, a, b) => [g, a, b].filter(x => x != null).join('|');
+  const LG = { A: 'Cash, bank & mobile money', O: 'Other assets', L: 'Liabilities', C: 'Funds', I: 'Income', E: 'Expenses' };
+  /** a ledger's display name */
+  F.ledgerName = (k) => { const [g, a, b] = String(k).split('|'); return g === 'A' ? `${acctName(a)} › ${b}` : a; };
+  /** chart of accounts: every ledger, grouped */
+  F.ledgers = () => {
+    const out = [], seen = new Set(); const add = (k) => { if (!seen.has(k)) { seen.add(k); out.push({ key: k, group: k.split('|')[0], name: F.ledgerName(k) }); } };
+    const b = F.balances(); F.ACCTS.forEach(([a]) => Object.keys(b[a].funds).forEach(f => add(L_('A', a, f))));
+    F.assetLedgers().forEach(n => add(L_('O', n))); F.liabLedgers().forEach(n => add(L_('L', n))); add(L_('C', FUND));
+    add(L_('I', 'Membership Fees')); CO().forEach(c => add(L_('I', c.name))); F.incomeCats().forEach(n => add(L_('I', n)));
+    F.expenseCats().forEach(n => add(L_('E', n)));
+    F.postings().forEach(p => add(p.ledger));   // anything used in the books (e.g. removed categories)
+    return out;
+  };
+  /** double-entry postings for every voucher: one line per ledger, Dr or Cr */
+  F.postings = () => {
+    const P2 = [];
+    const v = (r, c, narr, lines, extra) => lines.forEach(([ledger, dr, cr]) => { if (!(dr || cr)) return; P2.push(Object.assign({ date: r.date, vno: r.vno || '', vtype: VT[c][1], coll: c, id: r.id, narr, ledger, dr: +dr || 0, cr: +cr || 0, eventId: r.eventId || '', deptId: r.deptId || '' }, extra || {})); });
+    const A_ = (a, f) => L_('A', a, f);
+    OP().forEach(o => { const a = acctOfOpening(o.type), f = fundOf('open', o, a), x = +o.amount || 0; v(o, 'fin_openings', o.note || 'Balance brought forward', x >= 0 ? [[A_(a, f), x, 0], [L_('C', FUND), 0, x]] : [[L_('C', FUND), -x, 0], [A_(a, f), 0, -x]]); });
+    INC().forEach(i => { const a = acctOf(i.method), x = +i.amount || 0; v(i, 'fin_income', i.description || i.category, [[A_(a, fundOf('inc', i, a)), x, 0], [L_('I', i.category || 'Other'), 0, x]]); });
+    P().forEach(p => { const a = acctOf(p.method), x = +p.amount || 0; v(p, 'fin_payments', mName(p.memberId) + ' — fee ' + mLabel(p.month), [[A_(a, fundOf('fee', p, a)), x, 0], [L_('I', 'Membership Fees'), 0, x]]); });
+    CP().forEach(p => { const a = acctOf(p.method), x = +p.amount || 0, c = St.get('fin_contribs', p.contribId) || {}; v(p, 'fin_cpay', mName(p.memberId) + ' — ' + (c.name || 'Contribution'), [[A_(a, fundOf('cpay', p, a)), x, 0], [L_('I', c.name || 'Special Contribution'), 0, x]], { eventId: c.eventId || '' }); });
+    EXP().forEach(e => { const a = acctOf(e.method), x = +e.amount || 0; v(e, 'fin_expenses', (e.description || e.category) + (e.paidTo ? ' · paid to ' + e.paidTo : ''), [[L_('E', e.category || 'Other'), x, 0], [A_(a, fundOf('exp', e, a)), 0, x]]); });
+    TR().forEach(t => { const x = +t.amount || 0; v(t, 'fin_transfers', t.note || 'Money moved', [[A_(t.toAcct, t.toFund), x, 0], [A_(t.fromAcct, t.fromFund), 0, x]]); });
+    JV().forEach(j => v(j, 'fin_journals', j.narration || 'Journal', (j.lines || []).map(l => [l.ledger, l.dr, l.cr]), { eventId: j.eventId || '', deptId: j.deptId || '' }));
+    return P2.sort((x, y) => (x.date || '').localeCompare(y.date || '') || vnum(x.vno) - vnum(y.vno));
+  };
+  const inP = (d, a, b) => (!a || (d || '') >= a) && (!b || (d || '') <= b);
+  const yr = () => String(St.cfg().year || U.today().slice(0, 4));
+  const money = (n) => n ? fmt(n) : '';
+  const csvName = (t, a, b) => `AAC_${t}_${a || 'start'}_to_${b || U.today()}.csv`;
+  /** balance of each ledger (Dr − Cr) up to a date, or within a period */
+  const ledgerTotals = (from, to) => { const m = {}; F.postings().forEach(p => { if (!inP(p.date, from, to)) return; const x = m[p.ledger] || (m[p.ledger] = { dr: 0, cr: 0 }); x.dr += p.dr; x.cr += p.cr; }); return m; };
+  const BOOKS = [['day', 'Day Book'], ['journal', 'Journal vouchers'], ['tb', 'Trial Balance'], ['ie', 'Income & Expenditure'], ['bs', 'Balance Sheet'], ['cc', 'Cost centres'], ['led', 'Any ledger']];
+  function books(el, st) {
+    const bt = st.bt || 'day';
+    const from = st.bFrom != null ? st.bFrom : yr() + '-01-01', to = st.bTo || U.today();
+    const asAt = ['tb', 'bs'].includes(bt);
+    el.innerHTML = `<div class="tabs sub-tabs">${BOOKS.map(([k, t]) => `<button data-bt="${k}" class="${bt === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="filters">${asAt ? '' : `<label>From<input type="date" id="bFrom" value="${esc(from)}"></label>`}<label>${asAt ? 'As at' : 'To'}<input type="date" id="bTo" value="${esc(to)}"></label>
+        ${bt === 'led' ? `<label class="grow">Ledger<select id="bLed">${groupedLedgerOpts(st.bLed)}</select></label>` : ''}</div><div id="bookBody"></div>`;
+    el.querySelectorAll('[data-bt]').forEach(b => b.onclick = () => { st.bt = b.dataset.bt; A.render(); });
+    const f = el.querySelector('#bFrom'); if (f) f.onchange = () => { st.bFrom = f.value; A.render(); };
+    el.querySelector('#bTo').onchange = (e) => { st.bTo = e.target.value; A.render(); };
+    const lg = el.querySelector('#bLed'); if (lg) lg.onchange = () => { st.bLed = lg.value; A.render(); };
+    const body = el.querySelector('#bookBody'); bindNames(body); bindBins(body);
+    ({ day: dayBook, journal: journals, tb: trialBalance, ie: incomeExp, bs: balanceSheet, cc: costCentres, led: anyLedger })[bt](body, asAt ? '' : from, to, st);
+  }
+  const groupedLedgerOpts = (cur) => { const ls = F.ledgers(); return Object.keys(LG).map(g => { const l = ls.filter(x => x.group === g); return l.length ? `<optgroup label="${esc(LG[g])}">${l.map(x => `<option value="${esc(x.key)}" ${x.key === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>` : ''; }).join(''); };
+  const openVoucher = (c, id) => { const r = St.get(c, id); if (!r || !F.canEdit()) return; if (c === 'fin_income') incomeForm(r); else if (c === 'fin_expenses') F.expenseForm(r); else if (c === 'fin_transfers') transferForm(r); else if (c === 'fin_openings') balForm(r); else if (c === 'fin_journals') journalForm(r); else if (c === 'fin_payments') editPayment(r); else if (c === 'fin_cpay') { const co = St.get('fin_contribs', r.contribId); if (co) contribPay(co, r); } };
+  const bindVouchers = (el) => UI.bindRows(el, k => { const [c, id] = k.split(':'); openVoucher(c, id); });
+  /** Day Book: every voucher in date order, with its debit and credit lines */
+  function dayBook(el, from, to) {
+    const ps = F.postings().filter(p => inP(p.date, from, to)); const vs = []; const idx = {};
+    ps.forEach(p => { const k = p.coll + ':' + p.id; if (!idx[k]) { idx[k] = { id: k, date: p.date, vno: p.vno, vtype: p.vtype, narr: p.narr, lines: [] }; vs.push(idx[k]); } idx[k].lines.push(p); });
+    const tot = ps.reduce((s, p) => s + p.dr, 0);
+    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill gold">${vs.length} vouchers · ${fmt(tot)}</span><button class="btn sm" id="dbCsv">CSV</button></div>` +
+      UI.table([{ label: 'Date', f: v => U.fmtD(v.date) }, { label: 'Voucher', f: v => `<b class="mono">${esc(v.vno || '—')}</b><div class="small muted">${esc(v.vtype)}</div>` }, { label: 'Particulars', f: v => `${esc(v.narr)}<div class="vlines">${v.lines.map(l => `<div class="vl ${l.dr ? 'dr' : 'cr'}"><span>${l.dr ? 'Dr' : 'Cr'}</span><em>${esc(F.ledgerName(l.ledger))}</em><b>${fmt(l.dr || l.cr)}</b></div>`).join('')}</div>` }, { label: 'Amount', n: 1, f: v => `<b>${fmt(v.lines.reduce((t, l) => t + l.dr, 0))}</b>` }], vs.slice().reverse(), { click: 1, empty: 'No vouchers in this period.' });
+    bindVouchers(el);
+    el.querySelector('#dbCsv').onclick = () => UI.csvDownload(csvName('Day_Book', from, to), ['Date', 'Voucher no.', 'Type', 'Narration', 'Ledger', 'Debit', 'Credit'], ps.map(p => [p.date, p.vno, p.vtype, p.narr, F.ledgerName(p.ledger), p.dr || '', p.cr || ''])).catch(UI.fail);
+  }
+  /** Journal vouchers list */
+  function journals(el, from, to) {
+    const can = F.canEdit(); const js = JV().filter(j => inP(j.date, from, to)).sort((a, b) => (b.date || '').localeCompare(a.date || '') || vnum(b.vno) - vnum(a.vno));
+    el.innerHTML = `<div class="row" style="margin-bottom:10px">${can ? '<button class="btn pri" id="jvNew">New journal voucher</button>' : ''}<span class="small muted">Use a journal for anything that isn't a simple receipt, payment or money movement: loans, money owed, corrections, moving an expense to the right category, writing off.</span></div>` +
+      UI.table([{ label: 'Date', f: j => U.fmtD(j.date) }, { label: 'Voucher', f: j => `<b class="mono">${esc(j.vno || '—')}</b>` }, { label: 'Particulars', f: j => `${esc(j.narration || '')}<div class="vlines">${(j.lines || []).map(l => `<div><span>${+l.dr ? 'Dr' : 'Cr'}</span> ${esc(F.ledgerName(l.ledger))} · ${fmt(+l.dr || +l.cr)}</div>`).join('')}</div>` }, { label: 'Amount', n: 1, f: j => fmt((j.lines || []).reduce((s, l) => s + (+l.dr || 0), 0)) }, { label: '', f: j => bin('fin_journals|' + j.rid, `journal ${j.vno || ''}`) }], js.map(j => Object.assign({}, j, { id: 'fin_journals:' + j.id, rid: j.id })), { click: 1, empty: 'No journal vouchers in this period.' });
+    const n = el.querySelector('#jvNew'); if (n) n.onclick = () => journalForm();
+    bindVouchers(el);
+  }
+  /** journal voucher: any number of Dr / Cr lines that must balance */
+  function journalForm(rec) {
+    rec = rec ? JSON.parse(JSON.stringify(rec)) : { date: U.today(), narration: '', lines: [{ ledger: '', dr: '', cr: '' }, { ledger: '', dr: '', cr: '' }] };
+    const can = F.canEdit();
+    const row = (l, i) => `<div class="jl" data-i="${i}"><select data-k="ledger" ${can ? '' : 'disabled'}><option value="">Choose ledger…</option>${groupedLedgerOpts(l.ledger)}</select><input type="number" min="0" data-k="dr" placeholder="Debit" value="${esc(l.dr || '')}" ${can ? '' : 'disabled'}><input type="number" min="0" data-k="cr" placeholder="Credit" value="${esc(l.cr || '')}" ${can ? '' : 'disabled'}>${can ? `<button type="button" class="btn sm ghost" data-rm="${i}" aria-label="Remove line">✕</button>` : ''}</div>`;
+    const body = document.createElement('div');
+    const draw = () => {
+      const dr = rec.lines.reduce((s, l) => s + (+l.dr || 0), 0), cr = rec.lines.reduce((s, l) => s + (+l.cr || 0), 0);
+      body.innerHTML = `<div class="grid g2"><label class="f"><span>Date</span><input type="date" id="jvD" value="${esc(rec.date)}" ${can ? '' : 'disabled'}></label><label class="f"><span>Voucher no.</span><input type="text" value="${esc(rec.vno || 'given when saved')}" disabled></label></div>
+        <label class="f full" style="margin-top:8px"><span>Narration (what happened)</span><input type="text" id="jvN" value="${esc(rec.narration || '')}" placeholder="e.g. Borrowed from Mr. Juma for the tour" ${can ? '' : 'disabled'}></label>
+        <div class="jl jl-h"><span>Ledger</span><span>Debit</span><span>Credit</span><span></span></div>${rec.lines.map(row).join('')}
+        ${can ? '<button type="button" class="btn sm" id="jvAdd" style="margin-top:6px">+ Add line</button>' : ''}
+        <div class="jl jl-t"><b>Totals</b><b>${fmt(dr)}</b><b>${fmt(cr)}</b><span></span></div>
+        <p class="small ${dr === cr && dr > 0 ? 'muted' : ''}" style="margin:6px 0 0;${dr === cr && dr > 0 ? '' : 'color:var(--bad)'}">${dr === cr && dr > 0 ? 'Balanced ✓' : 'Debits and credits must be equal.'}</p>
+        <p class="small muted">Debit (Dr) = money arrives in an account, or an expense / something owned goes up. Credit (Cr) = money leaves an account, or income / money the choir owes goes up.</p>`;
+      body.querySelectorAll('.jl[data-i]').forEach(r => r.querySelectorAll('[data-k]').forEach(inp => inp.onchange = inp.oninput = () => { const i = +r.dataset.i, k = inp.dataset.k; rec.lines[i][k] = inp.value; if (k === 'dr' && inp.value) rec.lines[i].cr = ''; if (k === 'cr' && inp.value) rec.lines[i].dr = ''; updTot(); }));
+      body.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { if (rec.lines.length <= 2) return UI.toast('A journal needs at least two lines.', true); rec.lines.splice(+b.dataset.rm, 1); draw(); });
+      const ad = body.querySelector('#jvAdd'); if (ad) ad.onclick = () => { rec.lines.push({ ledger: '', dr: '', cr: '' }); draw(); };
+      body.querySelector('#jvD').onchange = (e) => rec.date = e.target.value; body.querySelector('#jvN').oninput = (e) => rec.narration = e.target.value;
+    };
+    const updTot = () => { const dr = rec.lines.reduce((s, l) => s + (+l.dr || 0), 0), cr = rec.lines.reduce((s, l) => s + (+l.cr || 0), 0); const t = body.querySelector('.jl-t'); t.children[1].textContent = fmt(dr); t.children[2].textContent = fmt(cr); const p = t.nextElementSibling; const ok = dr === cr && dr > 0; p.textContent = ok ? 'Balanced ✓' : 'Debits and credits must be equal.'; p.style.color = ok ? '' : 'var(--bad)'; p.className = 'small' + (ok ? ' muted' : ''); body.querySelectorAll('.jl[data-i]').forEach(r => { const l = rec.lines[+r.dataset.i]; r.querySelector('[data-k=dr]').value = l.dr || ''; r.querySelector('[data-k=cr]').value = l.cr || ''; }); };
+    draw();
+    const buttons = [{ label: can ? 'Cancel' : 'Close' }];
+    if (can && rec.id) buttons.unshift({ label: 'Delete', cls: 'danger', onClick: async () => { if (!(await UI.confirm('Delete this journal voucher?', { ok: 'Delete', danger: true }))) return false; guard(); await St.del('fin_journals', rec.id); UI.toast('Deleted'); } });
+    if (can) buttons.push({ label: 'Save journal', cls: 'pri', onClick: async () => {
+      guard(); const lines = rec.lines.filter(l => l.ledger && (+l.dr || +l.cr)).map(l => ({ ledger: l.ledger, dr: +l.dr || 0, cr: +l.cr || 0 }));
+      const dr = lines.reduce((s, l) => s + l.dr, 0), cr = lines.reduce((s, l) => s + l.cr, 0);
+      if (!rec.date) { UI.toast('Choose a date.', true); return false; }
+      if (lines.length < 2) { UI.toast('Add at least two lines with a ledger and an amount.', true); return false; }
+      if (rec.lines.some(l => !l.ledger && (+l.dr || +l.cr))) { UI.toast('Choose a ledger on every line with an amount.', true); return false; }
+      if (Math.abs(dr - cr) > 0.001 || !dr) { UI.toast('Debits and credits must be equal.', true); return false; }
+      const clean = Object.assign({}, rec, { lines, narration: String(rec.narration || '').trim() }); delete clean.rid;
+      await St.put('fin_journals', clean, { summary: 'Journal ' + (clean.narration || '') });
+      UI.toast('Journal saved');
+    } });
+    UI.modal({ title: rec.id ? 'Journal voucher ' + (rec.vno || '') : 'New journal voucher', body, wide: true, buttons });
+  }
+  /** Trial Balance as at a date */
+  function trialBalance(el, from, to) {
+    const m = ledgerTotals('', to); const ls = F.ledgers();
+    const rows = ls.map(l => { const x = m[l.key] || { dr: 0, cr: 0 }; const n = x.dr - x.cr; return { id: l.key, l, dr: n > 0 ? n : 0, cr: n < 0 ? -n : 0 }; }).filter(r => r.dr || r.cr);
+    const td = rows.reduce((s, r) => s + r.dr, 0), tc = rows.reduce((s, r) => s + r.cr, 0);
+    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ${Math.abs(td - tc) < 0.5 ? 'ok' : 'bad'}">${Math.abs(td - tc) < 0.5 ? 'Balanced ✓' : 'Not balanced'} · Dr ${fmt(td)} · Cr ${fmt(tc)}</span><button class="btn sm" id="tbCsv">CSV</button></div>` +
+      Object.keys(LG).map(g => { const r = rows.filter(x => x.l.group === g); return r.length ? `<h3 class="bk-h">${esc(LG[g])}</h3>` + UI.table([{ label: 'Ledger', f: x => `<a href="#" class="mlink" data-led="${esc(x.l.key)}">${esc(x.l.name)}</a>` }, { label: 'Debit', n: 1, f: x => money(x.dr) }, { label: 'Credit', n: 1, f: x => money(x.cr) }], r) : ''; }).join('') +
+      `<div class="bk-total"><span>Total</span><b>${fmt(td)}</b><b>${fmt(tc)}</b></div>`;
+    bindLedLinks(el);
+    el.querySelector('#tbCsv').onclick = () => UI.csvDownload(`AAC_Trial_Balance_${to}.csv`, ['Group', 'Ledger', 'Debit', 'Credit'], rows.map(r => [LG[r.l.group], r.l.name, r.dr || '', r.cr || '']).concat([['', 'Total', td, tc]])).catch(UI.fail);
+  }
+  const bindLedLinks = (el) => el.querySelectorAll('[data-led]').forEach(a => a.onclick = (e) => { e.preventDefault(); const st = A.state.fin; st.bt = 'led'; st.bLed = a.dataset.led; A.render(); });
+  /** Income & Expenditure account for a period */
+  function incomeExp(el, from, to) {
+    const m = ledgerTotals(from, to); const ls = F.ledgers();
+    const inc = ls.filter(l => l.group === 'I').map(l => ({ id: l.key, l, v: (m[l.key] || { dr: 0, cr: 0 }).cr - (m[l.key] || { dr: 0, cr: 0 }).dr })).filter(r => r.v);
+    const exp = ls.filter(l => l.group === 'E').map(l => ({ id: l.key, l, v: (m[l.key] || { dr: 0, cr: 0 }).dr - (m[l.key] || { dr: 0, cr: 0 }).cr })).filter(r => r.v);
+    const ti = inc.reduce((s, r) => s + r.v, 0), te = exp.reduce((s, r) => s + r.v, 0), net = ti - te;
+    const tbl = (rows, tot, label) => UI.table([{ label, f: r => `<a href="#" class="mlink" data-led="${esc(r.l.key)}">${esc(r.l.name)}</a>` }, { label: 'Amount', n: 1, f: r => fmt(r.v) }], rows.sort((a, b) => b.v - a.v), { empty: 'None in this period.' }) + `<div class="bk-total two"><span>Total</span><b>${fmt(tot)}</b></div>`;
+    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ${net >= 0 ? 'ok' : 'bad'}">${net >= 0 ? 'Surplus' : 'Deficit'} ${fmt(Math.abs(net))}</span><span class="small muted">${U.fmtD(from) || 'Start'} – ${U.fmtD(to)}</span><button class="btn sm" id="ieCsv">CSV</button></div>
+      <div class="grid g2"><div class="card"><h3>Income</h3>${tbl(inc, ti, 'Income')}</div><div class="card"><h3>Expenditure</h3>${tbl(exp, te, 'Expenditure')}</div></div>
+      <div class="bk-total two big"><span>${net >= 0 ? 'Surplus (income more than expenditure)' : 'Deficit (expenditure more than income)'}</span><b style="color:${net >= 0 ? 'var(--ok)' : 'var(--bad)'}">${fmt(Math.abs(net))}</b></div>`;
+    bindLedLinks(el);
+    el.querySelector('#ieCsv').onclick = () => UI.csvDownload(csvName('Income_Expenditure', from, to), ['Side', 'Ledger', 'Amount'], inc.map(r => ['Income', r.l.name, r.v]).concat([['Income', 'Total income', ti]], exp.map(r => ['Expenditure', r.l.name, r.v]), [['Expenditure', 'Total expenditure', te], ['', net >= 0 ? 'Surplus' : 'Deficit', Math.abs(net)]])).catch(UI.fail);
+  }
+  /** Balance Sheet as at a date: what the choir has = what it owes + its funds */
+  function balanceSheet(el, from, to) {
+    const m = ledgerTotals('', to); const ls = F.ledgers(); const bal = (k) => { const x = m[k] || { dr: 0, cr: 0 }; return x.dr - x.cr; };
+    const assets = ls.filter(l => l.group === 'A' || l.group === 'O').map(l => ({ l, v: bal(l.key) })).filter(r => r.v);
+    const liabs = ls.filter(l => l.group === 'L').map(l => ({ l, v: -bal(l.key) })).filter(r => r.v);
+    const fund = -bal(L_('C', FUND)); const surplus = ls.filter(l => l.group === 'I' || l.group === 'E').reduce((s, l) => s - bal(l.key), 0);
+    const ta = assets.reduce((s, r) => s + r.v, 0), tl = liabs.reduce((s, r) => s + r.v, 0), tf = fund + surplus;
+    const line = (n, v, k) => `<div class="bs-l"><span>${k ? `<a href="#" class="mlink" data-led="${esc(k)}">${esc(n)}</a>` : esc(n)}</span><b${v < 0 ? ' style="color:var(--bad)"' : ''}>${fmt(v)}</b></div>`;
+    const grpA = F.ACCTS.map(([a, n]) => { const r = assets.filter(x => x.l.key.startsWith('A|' + a + '|')); return r.length ? `<div class="bs-g">${esc(n)}</div>` + r.map(x => line(x.l.key.split('|')[2], x.v, x.l.key)).join('') + `<div class="bs-st"><span>Total ${esc(n.toLowerCase())}</span><b>${fmt(r.reduce((s, x) => s + x.v, 0))}</b></div>` : ''; }).join('') + (() => { const r = assets.filter(x => x.l.group === 'O'); return r.length ? '<div class="bs-g">Other assets</div>' + r.map(x => line(x.l.name, x.v, x.l.key)).join('') : ''; })();
+    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill ${Math.abs(ta - tl - tf) < 0.5 ? 'ok' : 'bad'}">${Math.abs(ta - tl - tf) < 0.5 ? 'Balanced ✓' : 'Not balanced'}</span><span class="small muted">As at ${U.fmtD(to)}</span><button class="btn sm" id="bsCsv">CSV</button></div>
+      <div class="grid g2"><div class="card"><h3>What the choir has (assets)</h3>${grpA || '<div class="empty">Nothing yet.</div>'}<div class="bk-total two big"><span>Total assets</span><b>${fmt(ta)}</b></div></div>
+      <div class="card"><h3>Liabilities & funds</h3><div class="bs-g">Liabilities (money the choir owes)</div>${liabs.map(x => line(x.l.name, x.v, x.l.key)).join('') || '<div class="small muted" style="padding:4px 0">None</div>'}<div class="bs-st"><span>Total liabilities</span><b>${fmt(tl)}</b></div>
+        <div class="bs-g">Funds</div>${line('Accumulated fund (balances brought forward)', fund, L_('C', FUND))}${line('Surplus / deficit to date (income − expenditure)', surplus)}<div class="bs-st"><span>Total funds</span><b>${fmt(tf)}</b></div>
+        <div class="bk-total two big"><span>Total liabilities & funds</span><b>${fmt(tl + tf)}</b></div></div></div>`;
+    bindLedLinks(el);
+    el.querySelector('#bsCsv').onclick = () => UI.csvDownload(`AAC_Balance_Sheet_${to}.csv`, ['Side', 'Item', 'Amount'], assets.map(x => ['Assets', x.l.name, x.v]).concat([['Assets', 'Total assets', ta]], liabs.map(x => ['Liabilities', x.l.name, x.v]), [['Liabilities', 'Total liabilities', tl], ['Funds', 'Accumulated fund', fund], ['Funds', 'Surplus / deficit to date', surplus], ['Funds', 'Total funds', tf], ['', 'Total liabilities & funds', tl + tf]])).catch(UI.fail);
+  }
+  /** cost centres: income and spending per event and per department */
+  function costCentres(el, from, to, st) {
+    const ps = F.postings().filter(p => inP(p.date, from, to) && /^(I|E)\|/.test(p.ledger));
+    const by = (key, name) => { const m = {}; ps.forEach(p => { const k = p[key]; if (!k) return; const x = m[k] || (m[k] = { id: k, name: name(k), inc: 0, exp: 0 }); if (p.ledger[0] === 'I') x.inc += p.cr - p.dr; else x.exp += p.dr - p.cr; }); return Object.values(m).sort((a, b) => (b.inc + b.exp) - (a.inc + a.exp)); };
+    const ev = by('eventId', k => (St.get('events', k) || {}).title || 'Deleted event'), dp = by('deptId', k => L.deptName(k) || 'Deleted department');
+    const tbl = (rows, label) => UI.table([{ label, f: r => `<b>${esc(r.name)}</b>` }, { label: 'Income', n: 1, f: r => money(r.inc) }, { label: 'Expenditure', n: 1, f: r => money(r.exp) }, { label: 'Net', n: 1, f: r => `<b style="color:${r.inc - r.exp >= 0 ? 'var(--ok)' : 'var(--bad)'}">${fmt(r.inc - r.exp)}</b>` }], rows, { empty: 'Nothing linked yet. Link income and expenses to an event or department when you record them.' });
+    el.innerHTML = `<p class="small muted" style="margin-top:0">Income and expenses linked to an event or a department when they were recorded (contributions count for the event their category is linked to).</p>
+      <div class="card"><h3>By event</h3>${tbl(ev, 'Event')}</div><div class="card"><h3>By department</h3>${tbl(dp, 'Department')}</div><button class="btn sm" id="ccCsv">CSV</button>`;
+    el.querySelector('#ccCsv').onclick = () => UI.csvDownload(csvName('Cost_Centres', from, to), ['Centre', 'Name', 'Income', 'Expenditure', 'Net'], ev.map(r => ['Event', r.name, r.inc, r.exp, r.inc - r.exp]).concat(dp.map(r => ['Department', r.name, r.inc, r.exp, r.inc - r.exp]))).catch(UI.fail);
+  }
+  /** statement of any ledger, with opening balance and running balance */
+  function anyLedger(el, from, to, st) {
+    const k = st.bLed || (F.ledgers()[0] || {}).key; if (!k) { el.innerHTML = '<div class="empty">No ledgers yet.</div>'; return; }
+    const crNature = /^(I|L|C)\|/.test(k); const sign = (p) => crNature ? p.cr - p.dr : p.dr - p.cr;
+    const all = F.postings().filter(p => p.ledger === k); const open = all.filter(p => from && (p.date || '') < from).reduce((s, p) => s + sign(p), 0);
+    let run = open; const rows = all.filter(p => inP(p.date, from, to)).map((p, i) => { run += sign(p); return Object.assign({}, p, { bal: run, rid: p.coll + ':' + p.id + ':' + i }); });
+    el.innerHTML = `<div class="row" style="margin-bottom:10px"><span class="pill gold">${esc(F.ledgerName(k))}: ${fmt(run)}${crNature ? ' Cr' : ' Dr'}</span>${from ? `<span class="small muted">Opening ${fmt(open)}</span>` : ''}<button class="btn sm" id="alCsv">CSV</button></div>` +
+      UI.table([{ label: 'Date', f: r => U.fmtD(r.date) }, { label: 'Voucher', f: r => `<span class="mono">${esc(r.vno || '—')}</span><div class="small muted">${esc(r.vtype)}</div>` }, { label: 'Particulars', f: r => esc(r.narr) }, { label: 'Debit', n: 1, f: r => money(r.dr) }, { label: 'Credit', n: 1, f: r => money(r.cr) }, { label: 'Balance', n: 1, f: r => `<b>${fmt(r.bal)}</b>` }], rows.slice().reverse().map(r => Object.assign(r, { id: r.coll + ':' + r.id })), { click: 1, empty: 'No entries in this period.' });
+    bindVouchers(el);
+    el.querySelector('#alCsv').onclick = () => UI.csvDownload(csvName('Ledger_' + F.ledgerName(k).replace(/[^A-Za-z0-9]+/g, '_'), from, to), ['Date', 'Voucher no.', 'Type', 'Particulars', 'Debit', 'Credit', 'Balance'], (from ? [[from, '', '', 'Opening balance', '', '', open]] : []).concat(rows.map(r => [r.date, r.vno, r.vtype, r.narr, r.dr || '', r.cr || '', r.bal]))).catch(UI.fail);
   }
 
   // ---------- categories ----------
@@ -603,13 +802,14 @@
           { label: '', f: c => can ? `<span style="white-space:nowrap"><button class="btn sm" data-cce="${c.id}">Edit</button> ${c.status === 'Closed' ? `<button class="btn sm" data-cco="${c.id}">Reopen</button>` : `<button class="btn sm" data-ccc="${c.id}">Close</button>`} <button class="btn sm danger" data-ccd="${c.id}">🗑</button></span>` : '' }],
           CO().slice().sort((a, b) => (a.status === 'Closed') - (b.status === 'Closed') || (isOngoing(b) - isOngoing(a)) || (a.name || '').localeCompare(b.name || '')), { empty: 'No contribution categories yet. Add one to start recording contributions from members.' })}
         <p class="small muted" style="margin-top:8px"><b>Close</b> hides a category from new recordings but keeps its history. <b>🗑</b> deletes it together with its payments.</p></div>
-      <div class="grid g2" style="margin-top:14px">${listCard('Income categories (other income)', 'incomeCats', F.incomeCats(), F.INCOME_CATS, 'income')}${listCard('Expense categories', 'expenseCats', F.expenseCats(), F.EXPENSE_CATS, 'expenses')}</div>`;
+      <div class="grid g2" style="margin-top:14px">${listCard('Income categories (other income)', 'incomeCats', F.incomeCats(), F.INCOME_CATS, 'income')}${listCard('Expense categories', 'expenseCats', F.expenseCats(), F.EXPENSE_CATS, 'expenses')}${listCard('Liabilities (money the choir owes)', 'liabLedgers', F.liabLedgers(), F.LIAB_DEF, 'journals')}${listCard('Other assets (besides cash, bank, mobile money)', 'assetLedgers', F.assetLedgers(), F.OASSET_DEF, 'journals')}</div>`;
     const saveList = async (key, list) => { guard(); await St.put('fin_settings', Object.assign({}, St.get('fin_settings', 'main') || {}, { id: 'main', [key]: list }), { summary: 'Finance categories' }); A.render(); };
-    const cur = (key) => key === 'incomeCats' ? F.incomeCats() : F.expenseCats();
+    const DEF = { incomeCats: F.INCOME_CATS, expenseCats: F.EXPENSE_CATS, liabLedgers: F.LIAB_DEF, assetLedgers: F.OASSET_DEF };
+    const cur = (key) => ({ incomeCats: F.incomeCats, expenseCats: F.expenseCats, liabLedgers: F.liabLedgers, assetLedgers: F.assetLedgers })[key]();
     el.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => { const inp = el.querySelector(`[data-addin="${b.dataset.add}"]`); const n = inp.value.trim().replace(/\s+/g, ' '); if (!n) { inp.focus(); return; } const l = cur(b.dataset.add); if (l.some(x => x.toLowerCase() === n.toLowerCase())) { UI.toast('That category already exists.', true); return; } try { await saveList(b.dataset.add, l.concat([n])); UI.toast('Category added'); } catch (e) { UI.fail(e); } });
     el.querySelectorAll('[data-addin]').forEach(i => i.onkeydown = (e) => { if (e.key === 'Enter') el.querySelector(`[data-add="${i.dataset.addin}"]`).click(); });
-    el.querySelectorAll('[data-rmc]').forEach(b => b.onclick = async () => { const l = cur(b.dataset.rmc).filter(x => x !== b.dataset.n); if (!l.length) { UI.toast('Keep at least one category.', true); return; } try { await saveList(b.dataset.rmc, l); UI.toast('Removed ' + b.dataset.n); } catch (e) { UI.fail(e); } });
-    el.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { try { await saveList(b.dataset.reset, (b.dataset.reset === 'incomeCats' ? F.INCOME_CATS : F.EXPENSE_CATS).slice()); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-rmc]').forEach(b => b.onclick = async () => { const l = cur(b.dataset.rmc).filter(x => x !== b.dataset.n); if (!l.length && /Cats$/.test(b.dataset.rmc)) { UI.toast('Keep at least one category.', true); return; } try { await saveList(b.dataset.rmc, l); UI.toast('Removed ' + b.dataset.n); } catch (e) { UI.fail(e); } });
+    el.querySelectorAll('[data-reset]').forEach(b => b.onclick = async () => { try { await saveList(b.dataset.reset, DEF[b.dataset.reset].slice()); } catch (e) { UI.fail(e); } });
     const cn = el.querySelector('#ccNew'); if (cn) cn.onclick = () => contribEdit(null, 'ongoing');
     const cg = el.querySelector('#ccGoal'); if (cg) cg.onclick = () => contribEdit(null, 'goal');
     el.querySelectorAll('[data-cce]').forEach(b => b.onclick = () => contribEdit(St.get('fin_contribs', b.dataset.cce)));
@@ -674,7 +874,7 @@
     el.querySelector('#bkPaste').onclick = () => UI.modal({ title: 'Paste backup text', body: '<textarea id="bkT" style="width:100%;min-height:220px;font-family:monospace;font-size:12px"></textarea>', buttons: [{ label: 'Cancel' }, { label: 'Continue', cls: 'pri', onClick: ({ body }) => { setTimeout(() => importBackup(body.querySelector('#bkT').value, el.querySelector('#bkMsg')), 30); } }] });
     el.querySelector('#xTpl').onclick = () => template().catch(UI.fail);
     el.querySelector('#xFile').onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (typeof XLSX === 'undefined') return UI.toast('The Excel library did not load.', true); const r = new FileReader(); r.onload = () => { e.target.value = ''; try { excelPreview(XLSX.read(r.result, { type: 'array', cellDates: true })); } catch (x) { UI.toast('Could not read that file. Use an Excel .xlsx file.', true); } }; r.readAsArrayBuffer(f); };
-    el.querySelector('#bkOut').onclick = async () => { const data = { members: F.members().map(m => ({ id: m.id, name: m.name, memberId: m.memberCode || '', phone: m.phone || '', email: m.email || '', gender: m.gender || '', section: (m.sections || [])[0] || 'Other', dateJoined: m.dateJoined || '', fee: m.monthlyFee || null, overrideStatus: m.finStatus || null })), payments: P(), contributions: CO(), contribPayments: CP(), income: INC(), expenses: EXP(), openings: OP(), transfers: TR(), settings: Object.assign({ choirName: St.cfg().name || '' }, F.set()) }; try { const ok = await UI.download(`AAC_Finance_backup_${U.today()}.json`, JSON.stringify({ app: 'choir-finance-manager', version: 2, exportedAt: new Date().toISOString(), data }, null, 2)); if (ok) UI.toast('Backup downloaded'); } catch (e) { UI.fail(e); } };
+    el.querySelector('#bkOut').onclick = async () => { const data = { members: F.members().map(m => ({ id: m.id, name: m.name, memberId: m.memberCode || '', phone: m.phone || '', email: m.email || '', gender: m.gender || '', section: (m.sections || [])[0] || 'Other', dateJoined: m.dateJoined || '', fee: m.monthlyFee || null, overrideStatus: m.finStatus || null })), payments: P(), contributions: CO(), contribPayments: CP(), income: INC(), expenses: EXP(), openings: OP(), transfers: TR(), journals: JV(), settings: Object.assign({ choirName: St.cfg().name || '' }, F.set()) }; try { const ok = await UI.download(`AAC_Finance_backup_${U.today()}.json`, JSON.stringify({ app: 'choir-finance-manager', version: 2, exportedAt: new Date().toISOString(), data }, null, 2)); if (ok) UI.toast('Backup downloaded'); } catch (e) { UI.fail(e); } };
   }
   function balForm(rec) {
     rec = rec || { type: 'Cash', date: U.today() };
