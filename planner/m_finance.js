@@ -157,10 +157,11 @@
   const LK = F.lock = { on: false, open: true, loaded: false, busy: false };
   const CL = () => window.ChoirLink;
   F.canManagePw = () => !!CL() && (CL().isAdmin || CL().isTreasurer);
-  F.locked = () => !!CL() && LK.on && !LK.open;
+  /** administrators open the Finance Manager directly, without the password */
+  F.locked = () => !!CL() && !CL().isAdmin && LK.on && !LK.open;
   /** can this device read finance data right now? (the database decides) */
   async function probe() {
-    if (!LK.on) return true;
+    if (!LK.on || (CL() && CL().isAdmin)) return true;
     try { await CL().fs.collection('pl_fin_settings').limit(1).get(); return true; } catch (e) { return !(e && e.code === 'permission-denied'); }
   }
   async function refreshLock(draw = true) {
@@ -212,7 +213,7 @@
   function pwCard() {
     if (!F.canManagePw()) return LK.on ? '<div class="card"><h3>Finance password</h3><p class="small muted">The Finance Manager is protected with a password. Only the treasurer and administrators can change it.</p></div>' : '';
     return `<div class="card"><h3>Finance password</h3>${LK.on
-      ? '<p class="small muted">On. Everyone, including leaders, must enter the password once on each device before they can see finance records.</p><div class="row"><button class="btn" id="fpChange">Change password</button><button class="btn danger" id="fpOff">Remove password</button></div>'
+      ? '<p class="small muted">On. Leaders (including the treasurer) must enter the password once on each device before they can see finance records. Administrators open it directly.</p><div class="row"><button class="btn" id="fpChange">Change password</button><button class="btn danger" id="fpOff">Remove password</button></div>'
       : '<p class="small muted">Off. Every leader with finance access can open the Finance Manager. Set a password so only people who know it can see the records.</p><button class="btn pri" id="fpOn">Set a password</button>'}</div>`;
   }
   function bindPwCard(el) {
