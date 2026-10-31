@@ -1,6 +1,6 @@
 /* AIC Arusha Choir — service worker: makes the app installable, opens fast, and shows notifications.
    Always tries the network first so members get updates straight away. */
-const CACHE = 'aic-choir-v7';
+const CACHE = 'aic-choir-v8';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -12,7 +12,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return; // never touch Firebase traffic
   e.respondWith(
-    fetch(req).then(res => {
+    // always check GitHub for a newer version (the browser cache could otherwise serve old files for minutes)
+    fetch(req, { cache: 'no-cache' }).then(res => {
       const copy = res.clone();
       caches.open(CACHE).then(c => c.put(req, copy));
       return res;
