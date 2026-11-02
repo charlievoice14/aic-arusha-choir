@@ -6,6 +6,57 @@
   const canP = () => A.Auth.can('practice');
   const canR = () => A.Auth.can('readiness') || A.Auth.can('practice');
 
+
+  // ---------- link with the choir app's QR check-in ----------
+  const AST = { present: 'P', late: 'L', absent: 'A', excused: 'E' };
+  const hm = (t) => { const [h, m] = String(t || '0:0').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+  const normN = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  /** the choir-app session for a planner session: same date, start time closest (within 3 hours) */
+  const appSessionFor = (s) => {
+    const list = ((window.ChoirLink && window.ChoirLink.appSessions) || []).filter(x => x && x.date === s.date && x.records);
+    if (!list.length) return null;
+    list.sort((a, b) => Math.abs(hm(a.startTime) - hm(s.start)) - Math.abs(hm(b.startTime) - hm(s.start)));
+    return Math.abs(hm(list[0].startTime) - hm(s.start)) <= 180 ? list[0] : null;
+  };
+  /** attendance from the app, as planner members: { recs: {plannerMemberId: P/L/A/E}, unmatched } */
+  const appRecords = A.P_appRecords = (s) => {
+    const a = appSessionFor(s); if (!a) return null;
+    const pm = St.live('members'); const byChoir = {}, byName = {};
+    pm.forEach(m => { if (m.choirId) byChoir[m.choirId] = m.id; byName[normN(m.name)] = byName[normN(m.name)] || m.id; });
+    const cm = (window.ChoirLink && window.ChoirLink.members) || [];
+    const recs = {}; let unmatched = 0;
+    Object.entries(a.records || {}).forEach(([cid, r]) => {
+      const v = AST[r && r.status]; if (!v) return;
+      const c = cm.find(x => x && x.id === cid);
+      const id = byChoir[cid] || (c && byName[normN(c.name)]);
+      if (id) recs[id] = v; else if (v === 'P' || v === 'L') unmatched++;
+    });
+    return { app: a, recs, unmatched };
+  };
+  const sameRec = (a, b) => JSON.stringify(Object.entries(a || {}).sort()) === JSON.stringify(Object.entries(b || {}).sort());
+  let syncing = false, syncAgain = false;
+  /** copy the app's check-in into planner attendance (marks made in the planner win) */
+  async function syncAppAttendance() {
+    if (St.mode !== 'db' || !A.Auth.canWriteData() || !(A.Auth.can('attendance') || canP()) || !St.ready.sessions || !St.ready.attendance || !St.ready.members) return;
+    if (syncing) { syncAgain = true; return; }
+    syncing = true;
+    try {
+      const today = U.today();
+      for (const s of St.all('sessions').filter(x => x.status !== 'cancelled' && x.date && x.date <= today)) {
+        const ar = appRecords(s); if (!ar || !Object.keys(ar.recs).length) continue;
+        const at = St.get('attendance', s.id) || {};
+        const manual = at.manual || (at.records && !at.appSessionId ? at.records : {});
+        const records = {}; Object.entries(Object.assign({}, ar.recs, manual)).forEach(([k, v]) => { if (v) records[k] = v; });
+        if (sameRec(records, at.records) && at.appSessionId === ar.app.id) continue;
+        await St.put('attendance', { id: s.id, sessionId: s.id, records, manual, appSessionId: ar.app.id, appTitle: ar.app.title || '' }, { audit: false });
+      }
+    } catch (e) { console.warn('check-in link', e); }
+    finally { syncing = false; if (syncAgain) { syncAgain = false; setTimeout(syncAppAttendance, 500); } }
+  }
+  let syncT = null; const queueSync = () => { clearTimeout(syncT); syncT = setTimeout(syncAppAttendance, 1200); };
+  window.addEventListener('choir-app-data', queueSync);
+  if (window.ChoirReady) window.ChoirReady.then(c => { if (c) setTimeout(queueSync, 2500); });
+
   const planFields = () => [
     { k: 'name', label: 'Plan name', req: true, full: true }, { k: 'color', label: 'Plan color (calendar & planner)', type: 'color', full: true }, { k: 'year', label: 'Planning year', type: 'number', req: true, min: 2000, max: 2100 },
     { k: 'eventId', label: 'Associated event (optional)', type: 'select', options: UI.opt.events() }, { k: 'objectiveId', label: 'Linked work-plan objective', type: 'select', options: UI.opt.objectives() },
@@ -544,7 +595,7 @@
       <p class="small">Scheduled: ${esc(s.start)}–${esc(s.end)} − ${s.breakMin || 0} min break = <b>${L.sessNet(s)} min</b> planned. ${L.sessActualNet(s) != null ? `Actual recorded: <b>${L.sessActualNet(s)} min</b>.` : 'No actual time recorded yet.'}</p>
       ${UI.form(fs, vals)}
       ${as.length ? `<p class="small" style="margin-top:8px">Songs rehearsed: tick them on the Songs tab (${as.filter(a => a.done).length}/${as.length} ticked).</p>` : ''}
-      <p class="small">Attendance: ${att && att.records ? `<b>${Object.values(att.records).filter(v => v === 'P' || v === 'L').length}</b> present of ${L.expectedMembers(s).length} expected` : '<span class="muted">not recorded</span>'} <button class="btn sm" id="srAtt" ${can ? '' : 'disabled'}>Open check-in</button></p>
+      <p class="small">Attendance: ${att && att.records ? `<b>${Object.values(att.records).filter(v => v === 'P' || v === 'L').length}</b> present of ${L.expectedMembers(s).length} expected${att.appSessionId ? ' <span class="pill info">from the choir app check-in</span>' : ''}` : (appRecords(s) ? '<span class="muted">choir app check-in found, opening check-in links it</span>' : '<span class="muted">not recorded</span>')} <button class="btn sm" id="srAtt" ${can ? '' : 'disabled'}>Open check-in</button></p>
       <div class="row" style="margin-top:10px"><button class="btn pri" id="srSave" ${can ? '' : 'disabled'}>Save session record</button></div>`;
     el.querySelector('#srAtt').onclick = () => checkin(s.id);
     el.querySelector('#srSave').onclick = async () => {
@@ -575,26 +626,30 @@
   function checkinPick(el) {
     const today = U.today();
     const ss = St.all('sessions').filter(s => s.status !== 'cancelled' && U.diffDays(s.date, today) >= 0 && U.diffDays(s.date, today) <= 7).sort(U.by(s => s.date + s.start, -1));
-    el.innerHTML = `<p class="small muted">Pick a session from today or the past week to take attendance.</p>` + (ss.length ? ss.map(s => `<button class="btn" style="display:flex;width:100%;justify-content:space-between;margin-bottom:6px;padding:12px" data-ci="${s.id}"><span>${U.fmtD(s.date)} · ${esc(s.start)}</span><span class="muted">${esc(s.title || (St.get('plans', s.planId) || {}).name || '')}</span></button>`).join('') : '<div class="empty">No sessions today or in the past week.</div>');
+    el.innerHTML = `<p class="small muted">Pick a session from today or the past week to take attendance.</p>` + (ss.length ? ss.map(s => `<button class="btn" style="display:flex;width:100%;justify-content:space-between;margin-bottom:6px;padding:12px" data-ci="${s.id}"><span>${U.fmtD(s.date)} · ${esc(s.start)}</span><span class="muted">${(() => { const ar = appRecords(s); return ar ? `<span class="pill info" style="margin-right:8px">App check-in: ${Object.values(ar.recs).filter(v => v === 'P' || v === 'L').length} present</span>` : ''; })()}${esc(s.title || (St.get('plans', s.planId) || {}).name || '')}</span></button>`).join('') : '<div class="empty">No sessions today or in the past week.</div>');
     el.querySelectorAll('[data-ci]').forEach(b => b.onclick = () => checkin(b.dataset.ci));
+    queueSync();
   }
   function checkin(sid) {
     const s = St.get('sessions', sid); if (!s) return;
     const can = A.Auth.can('attendance') || canP();
     const exp = L.expectedMembers(s); const extra = St.live('members').filter(m => !exp.includes(m.id) && m.status !== 'inactive');
-    const at = St.get('attendance', sid); const rec = Object.assign({}, (at && at.records) || {});
-    const row = (m) => `<div class="m"><span class="nm">${esc(m.name)}<span class="small muted"> ${(m.sections || []).join('/')}</span></span>${['P', 'L', 'A', 'E'].map(k => `<button class="btn ${k} ${rec[m.id] === k ? 'on' : ''}" data-m="${m.id}" data-v="${k}" title="${{ P: 'Present', L: 'Late', A: 'Absent', E: 'Excused' }[k]}" ${can ? '' : 'disabled'}>${k}</button>`).join('')}</div>`;
+    const at = St.get('attendance', sid) || {}; const ar = appRecords(s); const fromApp = ar ? ar.recs : {};
+    const manual = Object.assign({}, at.manual || (at.records && !at.appSessionId ? at.records : {}));
+    const rec = Object.assign({}, fromApp, at.records && !ar ? at.records : {}, manual);
+    const row = (m) => `<div class="m"><span class="nm">${esc(m.name)}<span class="small muted"> ${(m.sections || []).join('/')}</span>${fromApp[m.id] && rec[m.id] === fromApp[m.id] && !(m.id in manual) ? ' <span class="pill info qr-tag" title="From the choir app check-in">app</span>' : ''}</span>${['P', 'L', 'A', 'E'].map(k => `<button class="btn ${k} ${rec[m.id] === k ? 'on' : ''}" data-m="${m.id}" data-v="${k}" title="${{ P: 'Present', L: 'Late', A: 'Absent', E: 'Excused' }[k]}" ${can ? '' : 'disabled'}>${k}</button>`).join('')}</div>`;
     const body = document.createElement('div'); body.className = 'checkin';
     const paint = () => {
       const n = exp.filter(id => rec[id] === 'P' || rec[id] === 'L').length;
-      body.innerHTML = `<p class="small">${U.fmtD(s.date)} · ${esc(s.start)}–${esc(s.end)} · expected ${exp.length} (sections: ${(s.sections || []).join(', ') || 'all'}) · <b>${n} present</b> · ${exp.filter(id => !rec[id]).length} not marked</p>
+      body.innerHTML = `${ar ? `<div class="banner info" style="margin-bottom:8px">Linked to the choir app check-in: <b>${esc(ar.app.title || 'Session')}</b> ${esc(ar.app.startTime || '')} · ${Object.values(fromApp).filter(v => v === 'P').length} present · ${Object.values(fromApp).filter(v => v === 'L').length} late · ${Object.values(fromApp).filter(v => v === 'E').length} excused (from the app). Changes you make here are kept.${ar.unmatched ? `<br><span class="small">${ar.unmatched} ${ar.unmatched === 1 ? 'person who checked in isn\'t a planner member' : 'people who checked in aren\'t planner members'} yet: Members → Import choir members.</span>` : ''}</div>` : '<div class="small muted" style="margin-bottom:8px">No choir app check-in found for this date and time. Mark attendance here.</div>'}<p class="small">${U.fmtD(s.date)} · ${esc(s.start)}–${esc(s.end)} · expected ${exp.length} (sections: ${(s.sections || []).join(', ') || 'all'}) · <b>${n} present</b> · ${exp.filter(id => !rec[id]).length} not marked</p>
         <div class="row" style="margin-bottom:8px">${can ? '<button class="btn sm" id="ciAllP">Mark unmarked as present</button>' : ''}<span class="small muted">P present · L late · A absent · E excused</span></div>
         ${exp.map(id => St.get('members', id)).filter(Boolean).map(row).join('') || '<div class="empty">No expected participants. Add sections or members to the session.</div>'}
         ${extra.length ? `<details style="margin-top:10px"><summary class="small">Other members (visitors / not in planned sections)</summary>${extra.map(row).join('')}</details>` : ''}`;
-      body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const k = b.dataset.m; rec[k] = rec[k] === b.dataset.v ? undefined : b.dataset.v; if (!rec[k]) delete rec[k]; paint(); });
-      const all = body.querySelector('#ciAllP'); if (all) all.onclick = () => { exp.forEach(id => { if (!rec[id]) rec[id] = 'P'; }); paint(); };
+      const setv = (k, v) => { if (v) rec[k] = v; else delete rec[k]; if ((fromApp[k] || undefined) === (v || undefined)) delete manual[k]; else manual[k] = v || ''; };
+      body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const k = b.dataset.m; setv(k, rec[k] === b.dataset.v ? '' : b.dataset.v); paint(); });
+      const all = body.querySelector('#ciAllP'); if (all) all.onclick = () => { exp.forEach(id => { if (!rec[id]) setv(id, 'P'); }); paint(); };
     };
     paint();
-    UI.modal({ title: 'Practice check-in', body, buttons: [{ label: 'Close' }, ...(can ? [{ label: 'Save attendance', cls: 'pri', onClick: async () => { await St.put('attendance', { id: sid, sessionId: sid, records: rec }, { summary: 'Attendance ' + s.date }); UI.toast('Attendance saved'); } }] : [])] });
+    UI.modal({ title: 'Practice check-in', body, buttons: [{ label: 'Close' }, ...(can ? [{ label: 'Save attendance', cls: 'pri', onClick: async () => { const clean = {}; Object.entries(rec).forEach(([k, v]) => { if (v) clean[k] = v; }); await St.put('attendance', Object.assign({ id: sid, sessionId: sid, records: clean, manual }, ar ? { appSessionId: ar.app.id, appTitle: ar.app.title || '' } : {}), { summary: 'Attendance ' + s.date }); UI.toast('Attendance saved'); } }] : [])] });
   }
 })(window.App);

@@ -118,6 +118,15 @@
       /* choir members not yet in the planner, ready to be added */
       choirMembers: members.filter(m => m && m.name).map(m => ({ choirId: m.id, name: m.name, sections: m.voicePart ? [m.voicePart] : [], role: m.position && m.position !== 'Choir Member' ? m.position : '', userId: m.authUid || '' }))
     };
+    /* the choir app's attendance (QR check-in), kept up to date for the Practice Planner */
+    window.ChoirLink.appSessions = choir.sessions || [];
+    try {
+      fs.doc('choir/data').onSnapshot({}, d => {
+        const v = (d && d.exists) ? (d.data() || {}) : {};
+        window.ChoirLink.appSessions = v.sessions || []; if (v.members) window.ChoirLink.members = v.members;
+        window.dispatchEvent(new Event('choir-app-data'));
+      }, () => { });
+    } catch (e) { }
     return { db: makeDb(fs), user, downloads, sample: null };
   })();
 
