@@ -375,6 +375,16 @@ input,textarea,select{ font-size:16px !important; }
   .rep-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-soft);margin:-2px 0 8px;}
   .rep-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px;}
   .s-on{background:var(--present);} .s-late{background:var(--late);} .s-abs{background:var(--absent);} .s-exc{background:var(--purple);}
+  .rep-mrow.tap{cursor:pointer;border-radius:12px;transition:background .2s}
+  .rep-mrow.tap:active{background:var(--card2)}
+  .rm-hero{display:flex;gap:14px;align-items:center}
+  .rm-pct{font-size:22px;color:var(--primary)}
+  .rm-gt{display:block;font-size:15px}.rm-gs{display:block;font-size:12px;color:var(--text-soft);font-weight:500}
+  .rm-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);font-size:13.5px}
+  .rm-date{color:var(--text)}
+  .rm-st{display:flex;align-items:center;gap:6px;color:var(--text-soft);text-align:right}
+  .rm-st i{width:9px;height:9px;border-radius:3px;display:inline-block;flex:none}
+  .rm-st small{font-size:12px;opacity:.8}
   .rep-mrow{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);min-width:0;}
   .rep-mrow:last-child{border-bottom:0;}
   .rep-mmain{flex:1;min-width:0;}
@@ -1451,6 +1461,7 @@ document.getElementById('global-search').addEventListener('input', e=>{
 document.getElementById('global-search').addEventListener('keydown', e=>{ if(e.key === 'Enter') e.target.blur(); });
 
 function jumpTo(tab){
+  reportMemberId = null;
   if(tab !== 'chat'){ chatEditId = null; chatActionId = null; }
   stopSongAudio(); songViewId = null; songMenuOpen = false;
   if(tab !== 'mahudhurio'){
@@ -2265,6 +2276,7 @@ function deleteScheduleItem(ev){
 let reportPeriod = '90';
 let reportVoice = 'all';
 let reportChartIdx = null;
+let reportMemberId = null;          // Reports: a member's full attendance history
 function reportSessions(){
   const today = todayStr();
   let list = data.sessions.filter(s=>s.date <= today);
@@ -2313,7 +2325,56 @@ function lineChartSvg(points){
   return `<svg viewBox="0 0 ${W} ${H}" class="rc-svg" role="img" aria-label="Attendance rate per session">
     ${grid}${area ? `<path d="${area}" class="rc-area"/>` : ''}<path d="${path}" class="rc-line"/>${dots}${xl}${tip}${hits}</svg>`;
 }
+/* a member's attendance in the report period, grouped by schedule item (same rules as the Reports list) */
+function renderReportMember(m){
+  const sessions = reportSessions().filter(s=>memberJoinedBy(m, s.date));
+  const ST = { present:['On time','s-on'], late:['Late','s-late'], absent:['Absent','s-abs'], excused:['Excused','s-exc'] };
+  const groups = new Map();
+  sessions.forEach(s=>{
+    const ev = s.scheduleId && data.schedule.find(x=>x.id===s.scheduleId);
+    const key = ev ? 'sc:' + ev.id : 'ti:' + (s.title || 'Session');
+    if(!groups.has(key)) groups.set(key, { title: ev ? ev.title : (s.title || 'Session'), sub: ev ? (ev.date ? fmtLongDate(ev.date) : 'Every ' + ev.day) + ' · ' + (ev.time || '') : 'Not on the schedule', list: [] });
+    const r = (s.records||{})[m.id];
+    groups.get(key).list.push({ s, st: r && ST[r.status] ? r.status : 'absent', r: r || null });
+  });
+  const count = (l)=>{ const c = { present:0, late:0, absent:0, excused:0 }; l.forEach(x=>c[x.st]++); const counted = l.length - c.excused; c.pct = counted ? Math.round((c.present + c.late) / counted * 100) : 0; return c; };
+  const all = count([...groups.values()].flatMap(g=>g.list));
+  const periodLbl = { '30':'Last 30 days', '90':'Last 3 months', '365':'Last 12 months', 'all':'All time' }[reportPeriod] || '';
+  const bar = (c, t)=> `<div class="rep-bar">${['present','late','excused','absent'].map(k=> c[k] ? `<i class="${ST[k][1]}" style="flex:${c[k]} 1 0;"></i>` : '').join('')}</div>`;
+  const groupHtml = [...groups.values()].sort((a,b)=>b.list.length - a.list.length).map(g=>{
+    const c = count(g.list);
+    return `<div class="card rm-group">
+      <div class="rep-mtop"><span><b class="rm-gt">${escapeHtml(g.title)}</b><small class="rm-gs">${escapeHtml(g.sub)}</small></span><b>${c.pct}%</b></div>
+      ${bar(c)}
+      <div class="rep-msub" style="margin-bottom:6px;">${c.present} on time · ${c.late} late · ${c.absent} absent${c.excused ? ` · ${c.excused} excused` : ''}</div>
+      ${g.list.slice().sort((a,b)=>(b.s.date+(b.s.startTime||'')).localeCompare(a.s.date+(a.s.startTime||''))).map(x=>`
+        <div class="rm-row"><span class="rm-date">${fmtDayDate(x.s.date)}</span>
+          <span class="rm-st"><i class="${ST[x.st][1]}"></i>${ST[x.st][0]}${x.r && x.r.time ? ` <small>· ${escapeHtml(x.r.time)}</small>` : ''}${x.st === 'excused' && x.r && x.r.reason ? ` <small>· ${escapeHtml(x.r.reason)}</small>` : ''}</span></div>`).join('')}
+    </div>`;
+  }).join('');
+  return `
+    <div class="rep-head" style="display:flex;align-items:center;gap:10px;"><button class="auth-back" style="margin:0;" id="rep-member-back" aria-label="Back">${ICONS.back}</button><h1 class="mtitle" style="margin:0;">Attendance</h1></div>
+    <div class="card rm-hero">${avatarHtml(m, 52)}<div style="min-width:0;flex:1;"><div class="rep-mname" style="font-size:18px;">${escapeHtml(m.name)}</div><div class="rep-msub">${escapeHtml([m.position || 'Choir Member', voiceLabel(m)].filter(Boolean).join(' · '))}</div></div><b class="rm-pct">${all.pct}%</b></div>
+    <div class="rep-filters"><div class="field-box"><select id="rep-period">
+      ${[['30','Last 30 days'],['90','Last 3 months'],['365','Last 12 months'],['all','All time']].map(([v,l])=>`<option value="${v}" ${reportPeriod===v?'selected':''}>${l}</option>`).join('')}
+    </select></div></div>
+    <div class="card">
+      <div class="stat-grid">
+        <div class="stat"><div class="num" style="color:var(--present);">${all.present}</div><div class="lbl">On time</div></div>
+        <div class="stat"><div class="num" style="color:var(--late);">${all.late}</div><div class="lbl">Late</div></div>
+        <div class="stat"><div class="num" style="color:var(--absent);">${all.absent}</div><div class="lbl">Absent</div></div>
+        <div class="stat"><div class="num" style="color:var(--purple);">${all.excused}</div><div class="lbl">Excused</div></div>
+      </div>
+      <p class="desc" style="margin:10px 0 0;">${periodLbl}: ${sessions.length} session${sessions.length===1?'':'s'} since joining.</p>
+    </div>
+    ${groupHtml || '<div class="card"><div class="empty">No sessions in this period.</div></div>'}`;
+}
 function renderRipoti(){
+  if(reportMemberId){
+    const rm = data.members.find(x=>x.id===reportMemberId);
+    if(rm) return renderReportMember(rm);
+    reportMemberId = null;
+  }
   const sessions = reportSessions();
   const members = reportMembers();
   const voices = VOICE_PARTS;
@@ -2344,7 +2405,7 @@ function renderRipoti(){
   }).filter(r=>r.t).sort((x,y)=> y.pct-x.pct || y.p-x.p || x.m.name.localeCompare(y.m.name));
   const seg = (n, t, cls)=> n ? `<i class="${cls}" style="flex:${n} 1 0;"></i>` : '';
   const memberHtml = memberRows.map(r=>`
-    <div class="rep-mrow">
+    <div class="rep-mrow tap" data-rep-member="${r.m.id}" role="button" tabindex="0">
       ${avatarHtml(r.m, 34)}
       <div class="rep-mmain">
         <div class="rep-mtop"><span class="rep-mname">${escapeHtml(r.m.name)}</span><b>${r.pct}%</b></div>
@@ -2457,6 +2518,8 @@ function attachV7Handlers(){
   document.querySelectorAll('[data-del-past-item]').forEach(b=>{ b.onclick = ()=>{ const ev = data.schedule.find(x=>x.id===b.dataset.delPastItem); if(ev) deleteScheduleItem(ev); }; });
   const rp = document.getElementById('rep-period'); if(rp) rp.onchange = ()=>{ reportPeriod = rp.value; reportChartIdx = null; render(true); };
   const rv = document.getElementById('rep-voice'); if(rv) rv.onchange = ()=>{ reportVoice = rv.value; render(true); };
+  document.querySelectorAll('[data-rep-member]').forEach(el=>{ el.onclick = ()=>{ reportMemberId = el.dataset.repMember; window.scrollTo(0,0); render(); }; });
+  const rmb = document.getElementById('rep-member-back'); if(rmb) rmb.onclick = ()=>{ reportMemberId = null; render(); };
   document.querySelectorAll('[data-rc-idx]').forEach(el=>{
     el.addEventListener('click', ()=>{ const i = +el.dataset.rcIdx; reportChartIdx = reportChartIdx === i ? null : i; render(true); });
   });
