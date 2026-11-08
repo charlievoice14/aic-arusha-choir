@@ -423,7 +423,23 @@
         A.state.practice = Object.assign(A.state.practice || {}, { plan: saved.id, ptab: 'dash' });
         if (A.nav.mod === 'practice') A.render(); else A.go('practice', { plan: saved.id });
       },
-      deleteFn: rec.id ? async () => { if (L.planSessions(rec.id).some(s => s.status === 'completed')) { await St.patch('plans', rec.id, { status: 'cancelled' }); UI.toast('Plan has completed sessions, so it was marked Cancelled to keep history.'); return; } for (const s of L.planSessions(rec.id)) await St.del('sessions', s.id, { audit: false }); for (const a of L.planAssign(rec.id)) await St.del('assignments', a.id, { audit: false }); for (const s of St.all('series').filter(x => x.planId === rec.id)) await St.del('series', s.id, { audit: false }); await St.del('plans', rec.id); A.state.practice.plan = ''; } : null,
+      deleteFn: rec.id ? async () => {
+        const ss = L.planSessions(rec.id), done = ss.filter(s => s.status === 'completed');
+        let mode = 'all';
+        if (done.length) {
+          mode = await new Promise(res => { let picked = false; UI.modal({ title: 'Delete practice plan', body: `<p><b>${esc(rec.name || 'This plan')}</b> has <b>${done.length}</b> completed session${done.length === 1 ? '' : 's'} with their records and attendance.</p><p class="small muted">Delete everything permanently, or keep the history by marking the plan Cancelled.</p>`,
+            buttons: [{ label: 'Keep (do nothing)', onClick: () => { picked = true; res(''); } }, { label: 'Mark as cancelled', onClick: () => { picked = true; res('cancel'); } }, { label: 'Delete everything', cls: 'danger', onClick: () => { picked = true; res('all'); } }], onClose: () => { if (!picked) res(''); } }); });
+          if (!mode) return false;
+          if (mode === 'cancel') { await St.patch('plans', rec.id, { status: 'cancelled' }); UI.toast('Plan marked Cancelled. Its history is kept.'); return 'silent'; }
+        }
+        for (const s of ss) { if (St.get('attendance', s.id)) await St.del('attendance', s.id, { audit: false }); await St.del('sessions', s.id, { audit: false }); }
+        for (const a of L.planAssign(rec.id)) await St.del('assignments', a.id, { audit: false });
+        for (const s of St.all('series').filter(x => x.planId === rec.id)) await St.del('series', s.id, { audit: false });
+        for (const r of St.all('readiness').filter(x => x.planId === rec.id)) await St.del('readiness', r.id, { audit: false });
+        for (const e of St.all('events').filter(x => x.planId === rec.id)) await St.patch('events', e.id, { planId: '' }, { audit: false });
+        await St.del('plans', rec.id, { summary: 'Deleted practice plan ' + (rec.name || '') });
+        A.state.practice = Object.assign(A.state.practice || {}, { plan: '' }); UI.toast('Practice plan deleted'); return 'silent';
+      } : null,
     });
   }
 

@@ -92,7 +92,7 @@
       dz.innerHTML = `<button type="button" class="btn danger del-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>${esc(deleteLabel || 'Delete this record')}</button><span class="small muted">Removes it permanently.</span>`;
       dz.querySelector('button').onclick = async (e) => {
         const btn = e.currentTarget; btn.disabled = true;
-        try { if (await UI.confirm('Delete this record permanently? This cannot be undone.', { ok: 'Delete', danger: true })) { await deleteFn(); UI.toast('Deleted'); const bg = btn.closest('.modal-bg'); if (bg) bg.remove(); A.rerender && A.rerender(); } }
+        try { if (await UI.confirm('Delete this record permanently? This cannot be undone.', { ok: 'Delete', danger: true })) { const r = await deleteFn(); if (r === false) return; if (r !== 'silent') UI.toast('Deleted'); const bg = btn.closest('.modal-bg'); if (bg) bg.remove(); A.rerender && A.rerender(); } }
         catch (x) { UI.fail(x); } finally { btn.disabled = false; }
       };
       body.appendChild(dz);
